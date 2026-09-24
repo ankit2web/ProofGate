@@ -18,7 +18,7 @@
     {
       "name": "minimum_remaining_balance",
       "action": "transfer_money",
-      "condition": "balance_after >= 1000",
+      "condition": "balance - amount >= 1000",
       "effect": "allow",
       "reason": "At least ₹1,000 must remain after the transfer."
     }
