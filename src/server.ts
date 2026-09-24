@@ -23,10 +23,20 @@ const ActionRequest = z
     action: z.string(),
 
     environment: z
-      .enum(["development", "staging", "production"])
+      .enum([
+        "development",
+        "staging",
+        "production",
+      ])
       .optional(),
 
-    amount: z.number().optional(),
+    amount: z
+      .number()
+      .optional(),
+
+    paymentId: z
+      .string()
+      .optional(),
   })
   .strict();
 
@@ -80,7 +90,7 @@ app.post("/verify", async (request, reply) => {
    * Load policy.
    */
   const traceId = `pg_${randomUUID()}`;
-  
+
   const policy = await loadPolicy();
 
   console.log(
@@ -137,7 +147,7 @@ app.post("/verify", async (request, reply) => {
     violations: verification.violations,
     executed: false,
   }
-  
+
   await writeAuditLog(auditData);
 
   console.log(
@@ -260,9 +270,9 @@ app.post("/execute", async (request, reply) => {
       violations: verification.violations,
       executed: false,
     }
-    
+
     await writeAuditLog(auditData);
-    
+
     return reply.code(403).send({
       executed: false,
       verified: false,
@@ -334,37 +344,37 @@ app.post("/execute", async (request, reply) => {
       result: executionResult,
     };
   } catch (error) {
-  console.log(
-    "[ProofGate] ❌ Tool execution failed:",
-    error,
-  );
+    console.log(
+      "[ProofGate] ❌ Tool execution failed:",
+      error,
+    );
 
-  const auditData = {
-    traceId,
-    request: result.data,
-    trustedState,
-    proposedState,
-    policy: policy.name,
-    decision: "ALLOW" as const,
-    violations: [],
-    executed: false,
-    executionError:
-      error instanceof Error
-        ? error.message
-        : "Tool execution failed."
+    const auditData = {
+      traceId,
+      request: result.data,
+      trustedState,
+      proposedState,
+      policy: policy.name,
+      decision: "ALLOW" as const,
+      violations: [],
+      executed: false,
+      executionError:
+        error instanceof Error
+          ? error.message
+          : "Tool execution failed."
+    }
+    await writeAuditLog(auditData);
+
+    return reply.code(500).send({
+      executed: false,
+      verified: true,
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tool execution failed.",
+    });
   }
-  await writeAuditLog(auditData);
-
-  return reply.code(500).send({
-    executed: false,
-    verified: true,
-
-    error:
-      error instanceof Error
-        ? error.message
-        : "Tool execution failed.",
-  });
-}
 });
 
 /*

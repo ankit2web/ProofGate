@@ -4,6 +4,7 @@ export type ToolRequest = {
   action: string;
   environment?: string;
   amount?: number;
+  paymentId?: string;
 };
 
 export type ToolDefinition = {
@@ -22,12 +23,6 @@ export type ToolDefinition = {
     request: ToolRequest,
   ) => Promise<unknown>;
 };
-
-/*
- * ============================================================
- * Transfer Money Tool
- * ============================================================
- */
 
 const transferMoneyTool: ToolDefinition = {
   name: "transfer_money",
@@ -69,24 +64,12 @@ const transferMoneyTool: ToolDefinition = {
   },
 };
 
-/*
- * ============================================================
- * Tool Registry
- * ============================================================
- */
-
 const tools = new Map<string, ToolDefinition>();
 
 tools.set(
   transferMoneyTool.name,
   transferMoneyTool,
 );
-
-/*
- * ============================================================
- * Registry API
- * ============================================================
- */
 
 export function getTool(
   name: string,
