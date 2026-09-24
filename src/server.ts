@@ -7,6 +7,7 @@ import { verifyPolicy } from "./policy-engine.js";
 import { loadPolicy } from "./policy-loader.js";
 import { writeAuditLog } from "./audit-logger.js";
 import { randomUUID } from "node:crypto";
+import { hashPolicy } from "./policy-hash.js";
 
 const app = Fastify({
   logger: true,
@@ -22,21 +23,11 @@ const ActionRequest = z
   .object({
     action: z.string(),
 
-    environment: z
-      .enum([
-        "development",
-        "staging",
-        "production",
-      ])
-      .optional(),
+    environment: z.enum(["development", "staging", "production"]).optional(),
 
-    amount: z
-      .number()
-      .optional(),
+    amount: z.number().optional(),
 
-    paymentId: z
-      .string()
-      .optional(),
+    paymentId: z.string().optional(),
   })
   .strict();
 
@@ -63,17 +54,13 @@ app.post("/verify", async (request, reply) => {
   console.log("");
   console.log("[ProofGate] POST /verify");
 
-  const result = ActionRequest.safeParse(
-    request.body,
-  );
+  const result = ActionRequest.safeParse(request.body);
 
   /*
    * Reject invalid requests.
    */
   if (!result.success) {
-    console.log(
-      "[ProofGate] ❌ Request validation failed",
-    );
+    console.log("[ProofGate] ❌ Request validation failed");
 
     return reply.code(400).send({
       verified: false,
@@ -81,10 +68,7 @@ app.post("/verify", async (request, reply) => {
     });
   }
 
-  console.log(
-    "[ProofGate] Request validated:",
-    result.data,
-  );
+  console.log("[ProofGate] Request validated:", result.data);
 
   /*
    * Load policy.
@@ -93,9 +77,7 @@ app.post("/verify", async (request, reply) => {
 
   const policy = await loadPolicy();
 
-  console.log(
-    `[ProofGate] Loaded policy: ${policy.name}`,
-  );
+  console.log(`[ProofGate] Loaded policy: ${policy.name}`);
 
   /*
    * Get trusted state.
@@ -104,36 +86,21 @@ app.post("/verify", async (request, reply) => {
    *
    * The caller does NOT provide the balance.
    */
-  const trustedState = await getTrustedState(
-    result.data,
-  );
+  const trustedState = await getTrustedState(result.data);
 
-  console.log(
-    "[ProofGate] Trusted state:",
-    trustedState,
-  );
+  console.log("[ProofGate] Trusted state:", trustedState);
 
   /*
    * Calculate proposed state.
    */
-  const proposedState = calculateAfterState(
-    result.data,
-    trustedState,
-  );
+  const proposedState = calculateAfterState(result.data, trustedState);
 
-  console.log(
-    "[ProofGate] Proposed state:",
-    proposedState,
-  );
+  console.log("[ProofGate] Proposed state:", proposedState);
 
   /*
    * Verify with Z3.
    */
-  const verification = await verifyPolicy(
-    policy,
-    result.data,
-    proposedState,
-  );
+  const verification = await verifyPolicy(policy, result.data, proposedState);
 
   const auditData = {
     traceId,
@@ -141,19 +108,16 @@ app.post("/verify", async (request, reply) => {
     trustedState,
     proposedState,
     policy: policy.name,
-    decision: verification.allowed
-      ? ("ALLOW" as const)
-      : ("BLOCK" as const),
+    policyHash: hashPolicy(policy),
+    policyVersion: policy.version,
+    decision: verification.allowed ? ("ALLOW" as const) : ("BLOCK" as const),
     violations: verification.violations,
     executed: false,
-  }
+  };
 
   await writeAuditLog(auditData);
 
-  console.log(
-    "[ProofGate] Verification result:",
-    verification,
-  );
+  console.log("[ProofGate] Verification result:", verification);
 
   return {
     verified: true,
@@ -180,17 +144,13 @@ app.post("/execute", async (request, reply) => {
   console.log("");
   console.log("[ProofGate] POST /execute");
 
-  const result = ActionRequest.safeParse(
-    request.body,
-  );
+  const result = ActionRequest.safeParse(request.body);
 
   /*
    * Reject malformed requests.
    */
   if (!result.success) {
-    console.log(
-      "[ProofGate] ❌ Request validation failed",
-    );
+    console.log("[ProofGate] ❌ Request validation failed");
 
     return reply.code(400).send({
       executed: false,
@@ -199,10 +159,7 @@ app.post("/execute", async (request, reply) => {
     });
   }
 
-  console.log(
-    "[ProofGate] Request validated:",
-    result.data,
-  );
+  console.log("[ProofGate] Request validated:", result.data);
 
   /*
    * Load policy.
@@ -211,43 +168,26 @@ app.post("/execute", async (request, reply) => {
 
   const policy = await loadPolicy();
 
-  console.log(
-    `[ProofGate] Loaded policy: ${policy.name}`,
-  );
+  console.log(`[ProofGate] Loaded policy: ${policy.name}`);
 
   /*
    * Get trusted state.
    */
-  const trustedState = await getTrustedState(
-    result.data,
-  );
+  const trustedState = await getTrustedState(result.data);
 
-  console.log(
-    "[ProofGate] Trusted state:",
-    trustedState,
-  );
+  console.log("[ProofGate] Trusted state:", trustedState);
 
   /*
    * Calculate proposed state.
    */
-  const proposedState = calculateAfterState(
-    result.data,
-    trustedState,
-  );
+  const proposedState = calculateAfterState(result.data, trustedState);
 
-  console.log(
-    "[ProofGate] Proposed state:",
-    proposedState,
-  );
+  console.log("[ProofGate] Proposed state:", proposedState);
 
   /*
    * Verify BEFORE execution.
    */
-  const verification = await verifyPolicy(
-    policy,
-    result.data,
-    proposedState,
-  );
+  const verification = await verifyPolicy(policy, result.data, proposedState);
 
   /*
    * ==========================================================
@@ -256,9 +196,7 @@ app.post("/execute", async (request, reply) => {
    */
 
   if (!verification.allowed) {
-    console.log(
-      "[ProofGate] 🛑 ACTION BLOCKED",
-    );
+    console.log("[ProofGate] 🛑 ACTION BLOCKED");
 
     const auditData = {
       traceId,
@@ -266,10 +204,12 @@ app.post("/execute", async (request, reply) => {
       trustedState,
       proposedState,
       policy: policy.name,
+      policyHash: hashPolicy(policy),
+      policyVersion: policy.version,
       decision: "BLOCK" as const,
       violations: verification.violations,
       executed: false,
-    }
+    };
 
     await writeAuditLog(auditData);
 
@@ -291,33 +231,20 @@ app.post("/execute", async (request, reply) => {
    * ==========================================================
    */
 
-  console.log(
-    "[ProofGate] ✅ ACTION VERIFIED — EXECUTING",
-  );
+  console.log("[ProofGate] ✅ ACTION VERIFIED — EXECUTING");
 
   try {
-    const {
-      action,
-      environment,
-      amount,
-    } = result.data;
+    const { action, environment, amount } = result.data;
 
     const executionResult = await executeTool({
       action,
 
-      ...(environment === undefined
-        ? {}
-        : { environment }),
+      ...(environment === undefined ? {} : { environment }),
 
-      ...(amount === undefined
-        ? {}
-        : { amount }),
+      ...(amount === undefined ? {} : { amount }),
     });
 
-    console.log(
-      "[ProofGate] Execution result:",
-      executionResult,
-    );
+    console.log("[ProofGate] Execution result:", executionResult);
 
     const auditData = {
       traceId,
@@ -325,6 +252,8 @@ app.post("/execute", async (request, reply) => {
       trustedState,
       proposedState,
       policy: policy.name,
+      policyHash: hashPolicy(policy),
+      policyVersion: policy.version,
       decision: "ALLOW" as const,
       violations: [],
       executed: true,
@@ -344,10 +273,7 @@ app.post("/execute", async (request, reply) => {
       result: executionResult,
     };
   } catch (error) {
-    console.log(
-      "[ProofGate] ❌ Tool execution failed:",
-      error,
-    );
+    console.log("[ProofGate] ❌ Tool execution failed:", error);
 
     const auditData = {
       traceId,
@@ -355,24 +281,21 @@ app.post("/execute", async (request, reply) => {
       trustedState,
       proposedState,
       policy: policy.name,
+      policyHash: hashPolicy(policy),
+      policyVersion: policy.version,
       decision: "ALLOW" as const,
       violations: [],
       executed: false,
       executionError:
-        error instanceof Error
-          ? error.message
-          : "Tool execution failed."
-    }
+        error instanceof Error ? error.message : "Tool execution failed.",
+    };
     await writeAuditLog(auditData);
 
     return reply.code(500).send({
       executed: false,
       verified: true,
 
-      error:
-        error instanceof Error
-          ? error.message
-          : "Tool execution failed.",
+      error: error instanceof Error ? error.message : "Tool execution failed.",
     });
   }
 });
@@ -391,9 +314,7 @@ async function start() {
     });
 
     console.log("");
-    console.log(
-      "🚀 ProofGate running at http://127.0.0.1:3000",
-    );
+    console.log("🚀 ProofGate running at http://127.0.0.1:3000");
     console.log("");
   } catch (error) {
     app.log.error(error);

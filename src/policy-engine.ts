@@ -11,6 +11,7 @@ export type PolicyRule = {
 
 export type Policy = {
   name: string;
+  version: string;
   rules: PolicyRule[];
 };
 

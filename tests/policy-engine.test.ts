@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  verifyPolicy,
-  type Policy,
-} from "../src/policy-engine.js";
+import { verifyPolicy, type Policy } from "../src/policy-engine.js";
 
 describe("Policy Engine", () => {
   const policy: Policy = {
@@ -14,8 +11,7 @@ describe("Policy Engine", () => {
         action: "transfer_money",
         condition: "amount <= 10000",
         effect: "allow",
-        reason:
-          "Transfers cannot exceed ₹10,000.",
+        reason: "Transfers cannot exceed ₹10,000.",
       },
 
       {
@@ -29,13 +25,12 @@ describe("Policy Engine", () => {
       {
         name: "minimum_remaining_balance",
         action: "transfer_money",
-        condition:
-          "balance - amount >= 1000",
+        condition: "balance - amount >= 1000",
         effect: "allow",
-        reason:
-          "At least ₹1,000 must remain after the transfer.",
+        reason: "At least ₹1,000 must remain after the transfer.",
       },
     ],
+    version: "",
   };
 
   it("allows a valid transfer", async () => {
@@ -77,8 +72,7 @@ describe("Policy Engine", () => {
 
     expect(result.violations).toContainEqual({
       rule: "transfer_limit",
-      reason:
-        "Transfers cannot exceed ₹10,000.",
+      reason: "Transfers cannot exceed ₹10,000.",
     });
   });
 
@@ -101,9 +95,7 @@ describe("Policy Engine", () => {
 
     expect(
       result.violations.some(
-        (violation) =>
-          violation.rule ===
-          "sufficient_balance",
+        (violation) => violation.rule === "sufficient_balance",
       ),
     ).toBe(true);
   });
@@ -127,9 +119,7 @@ describe("Policy Engine", () => {
 
     expect(
       result.violations.some(
-        (violation) =>
-          violation.rule ===
-          "minimum_remaining_balance",
+        (violation) => violation.rule === "minimum_remaining_balance",
       ),
     ).toBe(true);
   });

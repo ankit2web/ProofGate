@@ -24,6 +24,7 @@ describe("Refund Policy", () => {
         reason: "Only paid payments can be refunded.",
       },
     ],
+    version: "",
   };
 
   it("allows a valid refund", async () => {
