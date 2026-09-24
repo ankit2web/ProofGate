@@ -1,4 +1,8 @@
 import { getBalance, transfer } from "./fake-bank.js";
+import {
+  getPayment,
+  refundPayment,
+} from "./fake-payments.js";
 
 export type ToolRequest = {
   action: string;
@@ -64,11 +68,79 @@ const transferMoneyTool: ToolDefinition = {
   },
 };
 
+const refundPaymentTool: ToolDefinition = {
+  name: "refund_payment",
+
+  async getTrustedState(request) {
+    if (!request.paymentId) {
+      throw new Error(
+        "Payment ID is required.",
+      );
+    }
+
+    const payment = getPayment(
+      request.paymentId,
+    );
+
+    return {
+      payment_amount: payment.amount,
+      payment_status:
+        payment.status === "paid" ? 1 : 0,
+    };
+  },
+
+  calculateAfterState(
+    request,
+    trustedState,
+  ) {
+    const state: Record<string, unknown> = {
+      ...request,
+      ...trustedState,
+    };
+
+    if (
+      typeof trustedState.payment_amount ===
+        "number" &&
+      typeof request.amount === "number"
+    ) {
+      state.refund_after =
+        trustedState.payment_amount -
+        request.amount;
+    }
+
+    return state;
+  },
+
+  async execute(request) {
+    if (!request.paymentId) {
+      throw new Error(
+        "Payment ID is required.",
+      );
+    }
+
+    if (typeof request.amount !== "number") {
+      throw new Error(
+        "Refund amount is required.",
+      );
+    }
+
+    return refundPayment(
+      request.paymentId,
+      request.amount,
+    );
+  },
+};
+
 const tools = new Map<string, ToolDefinition>();
 
 tools.set(
   transferMoneyTool.name,
   transferMoneyTool,
+);
+
+tools.set(
+  refundPaymentTool.name,
+  refundPaymentTool,
 );
 
 export function getTool(

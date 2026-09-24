@@ -21,6 +21,20 @@
       "condition": "balance - amount >= 1000",
       "effect": "allow",
       "reason": "At least ₹1,000 must remain after the transfer."
+    },
+    {
+      "name": "refund_limit",
+      "action": "refund_payment",
+      "condition": "amount <= payment_amount",
+      "effect": "allow",
+      "reason": "Refund cannot exceed the original payment amount."
+    },
+    {
+      "name": "payment_must_be_paid",
+      "action": "refund_payment",
+      "condition": "payment_status == 1",
+      "effect": "allow",
+      "reason": "Only paid payments can be refunded."
     }
   ]
 }
