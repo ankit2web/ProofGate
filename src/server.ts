@@ -85,7 +85,7 @@ async function verifyWithZ3(
 ) {
   const { Context } = await init();
 
-  const Z3 = Context("ProofGate");
+  const Z3 = Context("main");
 
   const violations: Array<{
     rule: string;
@@ -131,6 +131,8 @@ async function verifyWithZ3(
 
     const result = await solver.check();
 
+    const resultStatus = result.toString();
+
     /*
      * For an allow rule:
      *
@@ -138,7 +140,7 @@ async function verifyWithZ3(
      * UNSAT  = condition is violated
      */
     if (rule.effect === "allow") {
-      if (result === "unsat") {
+      if (resultStatus === "unsat") {
         violations.push({
           rule: rule.name,
           reason: rule.reason,
@@ -152,7 +154,7 @@ async function verifyWithZ3(
      * SAT = forbidden condition is true
      */
     if (rule.effect === "deny") {
-      if (result === "sat") {
+      if (resultStatus === "sat") {
         violations.push({
           rule: rule.name,
           reason: rule.reason,
