@@ -1,4 +1,4 @@
-import { init } from "z3-solver";
+import { getZ3 } from "./z3.js";
 import { compileConstraint } from "./constraint-compiler.js";
 
 export type PolicyRule = {
@@ -27,7 +27,7 @@ export async function verifyPolicy(
   request: Record<string, unknown>,
   proposedState: Record<string, unknown>,
 ): Promise<VerificationResult> {
-  const { Context } = await init();
+  const { Context } = await getZ3();
 
   const Z3 = Context("main");
 
