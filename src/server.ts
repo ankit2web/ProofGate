@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { init } from "z3-solver";
 import { compileConstraint } from "./constraint-compiler.js";
 import { calculateAfterState } from "./state.js";
+import { executeTool } from "./tool-executor.js";
 
 const app = Fastify({
     logger: true,
@@ -161,6 +162,89 @@ app.post("/verify", async (request, reply) => {
         policy: policy.name,
         ...verification,
     });
+});
+
+app.post("/execute", async (request, reply) => {
+  const result = ActionRequest.safeParse(request.body);
+
+  if (!result.success) {
+    return reply.status(400).send({
+      executed: false,
+      error: "Invalid request",
+      details: result.error.issues,
+    });
+  }
+
+  // ------------------------------------
+  // Get current state
+  // ------------------------------------
+
+  const currentBalance =
+    typeof result.data.balance === "number"
+      ? result.data.balance
+      : undefined;
+
+  if (currentBalance === undefined) {
+    return reply.status(400).send({
+      executed: false,
+      error: "Current balance is required.",
+    });
+  }
+
+  // ------------------------------------
+  // Calculate proposed state
+  // ------------------------------------
+
+  const afterState = calculateAfterState(
+    result.data,
+  );
+
+  // ------------------------------------
+  // Load policy
+  // ------------------------------------
+
+  const policy = await loadPolicy();
+
+  // ------------------------------------
+  // VERIFY BEFORE EXECUTION
+  // ------------------------------------
+
+  const verification = await verifyWithZ3(
+    afterState,
+    policy,
+  );
+
+  if (!verification.allowed) {
+    return reply.status(403).send({
+      executed: false,
+      verified: false,
+      violations: verification.violations,
+    });
+  }
+
+  // ------------------------------------
+  // EXECUTE ONLY AFTER VERIFICATION
+  // ------------------------------------
+
+  try {
+    const executionResult =
+      await executeTool(result.data);
+
+    return reply.send({
+      executed: true,
+      verified: true,
+      result: executionResult,
+    });
+  } catch (error) {
+    return reply.status(500).send({
+      executed: false,
+      verified: true,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tool execution failed.",
+    });
+  }
 });
 
 // ----------------------------------------
