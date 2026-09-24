@@ -1,27 +1,12 @@
-import { transfer } from "./fake-bank.js";
-
-type ToolRequest = {
-  action: string;
-  amount?: number;
-};
+import {
+  getTool,
+  type ToolRequest,
+} from "./tool-registry.js";
 
 export async function executeTool(
   request: ToolRequest,
 ) {
-  switch (request.action) {
-    case "transfer_money": {
-      if (typeof request.amount !== "number") {
-        throw new Error(
-          "Transfer amount is required.",
-        );
-      }
+  const tool = getTool(request.action);
 
-      return transfer(request.amount);
-    }
-
-    default:
-      throw new Error(
-        `Unknown tool: ${request.action}`,
-      );
-  }
+  return tool.execute(request);
 }

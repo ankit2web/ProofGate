@@ -1,20 +1,15 @@
+import { getTool } from "./tool-registry.js";
+
 export function calculateAfterState(
   request: Record<string, unknown>,
   trustedState: Record<string, unknown>,
 ) {
-  const state = {
-    ...request,
-    ...trustedState,
-  };
+  const tool = getTool(
+    String(request.action),
+  );
 
-  if (
-    request.action === "transfer_money" &&
-    typeof trustedState.balance === "number" &&
-    typeof request.amount === "number"
-  ) {
-    state.balance_after =
-      trustedState.balance - request.amount;
-  }
-
-  return state;
+  return tool.calculateAfterState(
+    request as Parameters<typeof tool.calculateAfterState>[0],
+    trustedState,
+  );
 }

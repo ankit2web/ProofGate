@@ -1,15 +1,13 @@
-import { getBalance } from "./fake-bank.js";
+import { getTool } from "./tool-registry.js";
 
 export async function getTrustedState(
   request: Record<string, unknown>,
 ) {
-  switch (request.action) {
-    case "transfer_money":
-      return {
-        balance: getBalance(),
-      };
+  const tool = getTool(
+    String(request.action),
+  );
 
-    default:
-      return {};
-  }
+  return tool.getTrustedState(
+    request as Parameters<typeof tool.getTrustedState>[0],
+  );
 }
