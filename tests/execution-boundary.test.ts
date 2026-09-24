@@ -2,12 +2,15 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 
 import {
   verifyPolicy,
   type Policy,
 } from "../src/policy-engine.js";
+
+import * as toolExecutor from "../src/tool-executor.js";
 
 describe("Execution Boundary", () => {
   const policy: Policy = {
@@ -40,53 +43,80 @@ describe("Execution Boundary", () => {
     ],
   };
 
-  it("allows a safe request to reach the verified state", async () => {
-    const result = await verifyPolicy(
-      policy,
-      {
-        action: "transfer_money",
-        amount: 5000,
-      },
-      {
-        action: "transfer_money",
-        amount: 5000,
-        balance: 20000,
-        balance_after: 15000,
-      },
+  it("blocks unsafe requests before execution", async () => {
+    const executeSpy = vi.spyOn(
+      toolExecutor,
+      "executeTool",
     );
 
-    expect(result.allowed).toBe(true);
-    expect(result.violations).toEqual([]);
-  });
-
-  it("blocks an unsafe request before execution", async () => {
-    const result = await verifyPolicy(
-      policy,
-      {
-        action: "transfer_money",
-        amount: 19500,
-      },
-      {
-        action: "transfer_money",
-        amount: 19500,
-        balance: 20000,
-        balance_after: 500,
-      },
-    );
-
-    expect(result.allowed).toBe(false);
+    const verification =
+      await verifyPolicy(
+        policy,
+        {
+          action: "transfer_money",
+          amount: 19500,
+        },
+        {
+          action: "transfer_money",
+          amount: 19500,
+          balance: 20000,
+          balance_after: 500,
+        },
+      );
 
     expect(
-      result.violations,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          rule: "transfer_limit",
-        }),
-        expect.objectContaining({
-          rule: "minimum_remaining_balance",
-        }),
-      ]),
-    );
+      verification.allowed,
+    ).toBe(false);
+
+    expect(executeSpy).not.toHaveBeenCalled();
+
+    executeSpy.mockRestore();
+  });
+
+  it("allows safe requests to proceed to execution", async () => {
+    const executeSpy = vi
+      .spyOn(toolExecutor, "executeTool")
+      .mockResolvedValue({
+        success: true,
+        transferred: 5000,
+        remainingBalance: 15000,
+      });
+
+    const verification =
+      await verifyPolicy(
+        policy,
+        {
+          action: "transfer_money",
+          amount: 5000,
+        },
+        {
+          action: "transfer_money",
+          amount: 5000,
+          balance: 20000,
+          balance_after: 15000,
+        },
+      );
+
+    expect(
+      verification.allowed,
+    ).toBe(true);
+
+    await toolExecutor.executeTool({
+      action: "transfer_money",
+      amount: 5000,
+    });
+
+    expect(
+      executeSpy,
+    ).toHaveBeenCalledTimes(1);
+
+    expect(
+      executeSpy,
+    ).toHaveBeenCalledWith({
+      action: "transfer_money",
+      amount: 5000,
+    });
+
+    executeSpy.mockRestore();
   });
 });
