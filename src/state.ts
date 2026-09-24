@@ -3,6 +3,7 @@ export function calculateAfterState(
   trustedState: Record<string, unknown>,
 ) {
   const state = {
+    ...request,
     ...trustedState,
   };
 
