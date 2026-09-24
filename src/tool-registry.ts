@@ -1,15 +1,35 @@
 import { getBalance, transfer } from "./fake-bank.js";
 import { getPayment, refundPayment } from "./fake-payments.js";
+import { z } from "zod";
+
+const TransferMoneyRequestSchema = z
+  .object({
+    action: z.literal("transfer_money"),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+    amount: z.number().positive(),
+  })
+  .strict();
+
+const RefundPaymentRequestSchema = z
+  .object({
+    action: z.literal("refund_payment"),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+    paymentId: z.string().min(1),
+    amount: z.number().positive(),
+  })
+  .strict();
 
 export type ToolRequest = {
   action: string;
-  environment?: string;
+  environment?: string | undefined;
   amount?: number;
   paymentId?: string;
 };
 
 export type ToolDefinition = {
   name: string;
+
+  validateRequest: (request: unknown) => ToolRequest;
 
   getTrustedState: (request: ToolRequest) => Promise<Record<string, unknown>>;
 
@@ -23,6 +43,10 @@ export type ToolDefinition = {
 
 const transferMoneyTool: ToolDefinition = {
   name: "transfer_money",
+
+  validateRequest(request) {
+    return TransferMoneyRequestSchema.parse(request);
+  },
 
   async getTrustedState() {
     return {
@@ -57,6 +81,10 @@ const transferMoneyTool: ToolDefinition = {
 
 const refundPaymentTool: ToolDefinition = {
   name: "refund_payment",
+
+  validateRequest(request) {
+    return RefundPaymentRequestSchema.parse(request);
+  },
 
   async getTrustedState(request) {
     if (!request.paymentId) {
