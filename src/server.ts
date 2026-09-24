@@ -5,6 +5,7 @@ import { executeTool } from "./tool-executor.js";
 import { getTrustedState } from "./state-provider.js";
 import { verifyPolicy } from "./policy-engine.js";
 import { loadPolicy } from "./policy-loader.js";
+import { writeAuditLog } from "./audit-logger.js";
 
 const app = Fastify({
   logger: true,
@@ -121,6 +122,20 @@ app.post("/verify", async (request, reply) => {
     proposedState,
   );
 
+  const data = {
+    request: result.data,
+    trustedState,
+    proposedState,
+    policy: policy.name,
+    decision: verification.allowed
+      ? ("ALLOW" as const)
+      : ("BLOCK" as const),
+    violations: verification.violations,
+    executed: false,
+  }
+  
+  await writeAuditLog(data);
+
   console.log(
     "[ProofGate] Verification result:",
     verification,
@@ -229,6 +244,18 @@ app.post("/execute", async (request, reply) => {
       "[ProofGate] 🛑 ACTION BLOCKED",
     );
 
+    const auditData = {
+      request: result.data,
+      trustedState,
+      proposedState,
+      policy: policy.name,
+      decision: "BLOCK" as const,
+      violations: verification.violations,
+      executed: false,
+    }
+    
+    await writeAuditLog(auditData);
+    
     return reply.code(403).send({
       executed: false,
       verified: false,
@@ -275,6 +302,19 @@ app.post("/execute", async (request, reply) => {
       executionResult,
     );
 
+    const auditData = {
+      request: result.data,
+      trustedState,
+      proposedState,
+      policy: policy.name,
+      decision: "ALLOW" as const,
+      violations: [],
+      executed: true,
+      executionResult,
+    };
+
+    await writeAuditLog(auditData);
+
     return {
       executed: true,
       verified: true,
@@ -286,21 +326,36 @@ app.post("/execute", async (request, reply) => {
       result: executionResult,
     };
   } catch (error) {
-    console.log(
-      "[ProofGate] ❌ Tool execution failed:",
-      error,
-    );
+  console.log(
+    "[ProofGate] ❌ Tool execution failed:",
+    error,
+  );
 
-    return reply.code(500).send({
-      executed: false,
-      verified: true,
-
-      error:
-        error instanceof Error
-          ? error.message
-          : "Tool execution failed.",
-    });
+  const auditData = {
+    request: result.data,
+    trustedState,
+    proposedState,
+    policy: policy.name,
+    decision: "ALLOW" as const,
+    violations: [],
+    executed: false,
+    executionError:
+      error instanceof Error
+        ? error.message
+        : "Tool execution failed."
   }
+  await writeAuditLog(auditData);
+
+  return reply.code(500).send({
+    executed: false,
+    verified: true,
+
+    error:
+      error instanceof Error
+        ? error.message
+        : "Tool execution failed.",
+  });
+}
 });
 
 /*
