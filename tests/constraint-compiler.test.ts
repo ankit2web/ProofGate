@@ -221,4 +221,58 @@ describe("Constraint Compiler", () => {
       ),
     ).toThrow();
   });
+
+    it("supports string equality", async () => {
+    const constraint = compileConstraint(
+      Z3,
+      'payment_status == "paid"',
+      {
+        payment_status: "paid",
+      },
+    );
+
+    const solver = new Z3.Solver();
+
+    solver.add(constraint);
+
+    const result = await solver.check();
+
+    expect(result.toString()).toBe("sat");
+  });
+
+  it("supports boolean equality", async () => {
+    const constraint = compileConstraint(
+      Z3,
+      "is_verified == true",
+      {
+        is_verified: true,
+      },
+    );
+
+    const solver = new Z3.Solver();
+
+    solver.add(constraint);
+
+    const result = await solver.check();
+
+    expect(result.toString()).toBe("sat");
+  });
+
+  it("supports false boolean values", async () => {
+    const constraint = compileConstraint(
+      Z3,
+      "is_verified == false",
+      {
+        is_verified: false,
+      },
+    );
+
+    const solver = new Z3.Solver();
+
+    solver.add(constraint);
+
+    const result = await solver.check();
+
+    expect(result.toString()).toBe("sat");
+  });
 });

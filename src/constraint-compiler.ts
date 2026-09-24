@@ -3,26 +3,13 @@ import type { Context } from "z3-solver";
 type Z3Value = any;
 
 type Token =
-  | {
-    type: "number";
-    value: string;
-  }
-  | {
-    type: "identifier";
-    value: string;
-  }
-  | {
-    type: "operator";
-    value: string;
-  }
-  | {
-    type: "leftParen";
-    value: "(";
-  }
-  | {
-    type: "rightParen";
-    value: ")";
-  };
+  | { type: "number"; value: string }
+  | { type: "string"; value: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "identifier"; value: string }
+  | { type: "operator"; value: string }
+  | { type: "leftParen"; value: "(" }
+  | { type: "rightParen"; value: ")" };
 
 const COMPARISON_OPERATORS = [
   "<=",
@@ -40,181 +27,76 @@ const ARITHMETIC_OPERATORS = [
   "/",
 ];
 
-/**
- * Compile a safe mathematical policy condition into Z3.
- *
- * Examples:
- *
- * amount <= 10000
- * balance >= amount
- * balance - amount >= 1000
- * daily_spend + amount <= daily_limit
- * quantity * price <= budget
- * (balance - amount) >= 1000
- */
-export function compileConstraint(
-  Z3: Context,
-  condition: string,
-  values: Record<string, unknown>,
-) {
-  const tokens = tokenize(condition);
-
-  const comparisonIndex = tokens.findIndex(
-    (token) =>
-      token.type === "operator" &&
-      COMPARISON_OPERATORS.includes(token.value),
-  );
-
-  if (comparisonIndex === -1) {
-    throw new Error(
-      `Constraint must contain a comparison operator: ${condition}`,
-    );
-  }
-
-  if (
-    tokens.filter(
-      (token) =>
-        token.type === "operator" &&
-        COMPARISON_OPERATORS.includes(token.value),
-    ).length !== 1
-  ) {
-    throw new Error(
-      `Constraint must contain exactly one comparison operator: ${condition}`,
-    );
-  }
-
-  const leftTokens = tokens.slice(
-    0,
-    comparisonIndex,
-  );
-
-  const rightTokens = tokens.slice(
-    comparisonIndex + 1,
-  );
-
-  if (leftTokens.length === 0) {
-    throw new Error(
-      `Missing left-hand expression: ${condition}`,
-    );
-  }
-
-  if (rightTokens.length === 0) {
-    throw new Error(
-      `Missing right-hand expression: ${condition}`,
-    );
-  }
-
-  const left = parseArithmeticExpression(
-    Z3,
-    leftTokens,
-    values,
-  );
-
-  const right = parseArithmeticExpression(
-    Z3,
-    rightTokens,
-    values,
-  );
-
-  const comparisonToken =
-    tokens[comparisonIndex];
-
-  if (!comparisonToken) {
-    throw new Error(
-      `Missing comparison operator: ${condition}`,
-    );
-  }
-
-  const operator = comparisonToken.value;
-
-  switch (operator) {
-    case "<=":
-      return left.le(right);
-
-    case ">=":
-      return left.ge(right);
-
-    case "<":
-      return left.lt(right);
-
-    case ">":
-      return left.gt(right);
-
-    case "==":
-      return left.eq(right);
-
-    case "!=":
-      return left.neq(right);
-
-    default:
-      throw new Error(
-        `Unsupported comparison operator: ${operator}`,
-      );
-  }
-}
-
-/*
- * ============================================================
- * Tokenizer
- * ============================================================
- */
-
-function tokenize(
-  expression: string,
-): Token[] {
+function tokenize(condition: string): Token[] {
   const tokens: Token[] = [];
 
   let index = 0;
 
-  while (index < expression.length) {
-    const char = expression[index];
+  while (index < condition.length) {
+    const char = condition[index]!;
 
     if (char === undefined) {
-      throw new Error(
-        "Unexpected end of expression.",
-      );
+      throw new Error("Unexpected end of condition.");
     }
 
-    /*
-     * Ignore whitespace.
-     */
     if (/\s/.test(char)) {
       index++;
       continue;
     }
 
     /*
-     * Numbers.
+     * String literal
+     *
+     * Example:
+     * "paid"
      */
-    if (/[0-9.]/.test(char)) {
-      const start = index;
+    if (char === '"') {
+      index++;
 
-      let dotCount = 0;
+      let value = "";
 
-      while (index < expression.length) {
-        const currentChar =
-          expression[index];
-
-        if (
-          currentChar === undefined ||
-          !/[0-9.]/.test(currentChar)
-        ) {
-          break;
-        }
-
-        if (currentChar === ".") {
-          dotCount++;
-        }
-
+      while (
+        index < condition.length &&
+        condition[index] !== '"'
+      ) {
+        value += condition[index];
         index++;
       }
 
-      const value = expression.slice(
-        start,
-        index,
-      );
+      if (index >= condition.length) {
+        throw new Error(
+          "Unterminated string literal.",
+        );
+      }
 
-      if (dotCount > 1 || value === ".") {
+      index++;
+
+      tokens.push({
+        type: "string",
+        value,
+      });
+
+      continue;
+    }
+
+    /*
+     * Number
+     */
+    if (/[0-9.]/.test(char)) {
+      let value = "";
+
+      while (
+        index < condition.length &&
+        /[0-9.]/.test(condition[index]!)
+      ) {
+        value += condition[index];
+        index++;
+      }
+
+      if (
+        value === "." ||
+        value.split(".").length > 2
+      ) {
         throw new Error(
           `Invalid number: ${value}`,
         );
@@ -229,97 +111,41 @@ function tokenize(
     }
 
     /*
-     * Identifiers.
-     *
-     * Example:
-     *
-     * amount
-     * balance
-     * daily_limit
+     * Identifier / boolean
      */
-    if (/[a-zA-Z_]/.test(char)) {
-      const start = index;
+    if (/[A-Za-z_]/.test(char)) {
+      let value = "";
 
-      index++;
-
-      while (index < expression.length) {
-        const currentChar =
-          expression[index];
-
-        if (
-          currentChar === undefined ||
-          !/[a-zA-Z0-9_]/.test(currentChar)
-        ) {
-          break;
-        }
-
+      while (
+        index < condition.length &&
+        /[A-Za-z0-9_]/.test(condition[index]!)
+      ) {
+        value += condition[index];
         index++;
       }
 
-      tokens.push({
-        type: "identifier",
-        value: expression.slice(
-          start,
-          index,
-        ),
-      });
+      if (value === "true") {
+        tokens.push({
+          type: "boolean",
+          value: true,
+        });
+      } else if (value === "false") {
+        tokens.push({
+          type: "boolean",
+          value: false,
+        });
+      } else {
+        tokens.push({
+          type: "identifier",
+          value,
+        });
+      }
 
       continue;
     }
 
     /*
-     * Two-character comparison operators.
-     */
-    const twoCharacterOperator =
-      expression.slice(index, index + 2);
-
-    if (
-      ["<=", ">=", "==", "!="].includes(
-        twoCharacterOperator,
-      )
-    ) {
-      tokens.push({
-        type: "operator",
-        value: twoCharacterOperator,
-      });
-
-      index += 2;
-
-      continue;
-    }
-
-    /*
-     * Arithmetic operators.
-     */
-    if (
-      ARITHMETIC_OPERATORS.includes(char)
-    ) {
-      tokens.push({
-        type: "operator",
-        value: char,
-      });
-
-      index++;
-
-      continue;
-    }
-
-    /*
-     * Single-character comparisons.
-     */
-    if (["<", ">"].includes(char)) {
-      tokens.push({
-        type: "operator",
-        value: char,
-      });
-
-      index++;
-
-      continue;
-    }
-
-    /*
-     * Parentheses.
+     * Parentheses
      */
     if (char === "(") {
       tokens.push({
@@ -328,7 +154,6 @@ function tokenize(
       });
 
       index++;
-
       continue;
     }
 
@@ -339,91 +164,189 @@ function tokenize(
       });
 
       index++;
+      continue;
+    }
 
+    /*
+     * Two-character operators
+     */
+    const twoCharacterOperator =
+      condition.slice(index, index + 2);
+
+    if (
+      COMPARISON_OPERATORS.includes(
+        twoCharacterOperator,
+      )
+    ) {
+      tokens.push({
+        type: "operator",
+        value: twoCharacterOperator,
+      });
+
+      index += 2;
+      continue;
+    }
+
+    /*
+     * Single-character operators
+     */
+    if (
+      [
+        ...ARITHMETIC_OPERATORS,
+        "<",
+        ">",
+      ].includes(char)
+    ) {
+      tokens.push({
+        type: "operator",
+        value: char,
+      });
+
+      index++;
       continue;
     }
 
     throw new Error(
-      `Invalid character in constraint: "${char}"`,
+      `Invalid character in condition: ${char}`,
     );
   }
 
   return tokens;
 }
 
-/*
- * ============================================================
- * Arithmetic Parser
- * ============================================================
- *
- * Grammar:
- *
- * expression
- *   → term ((+ | -) term)*
- *
- * term
- *   → unary ((* | /) unary)*
- *
- * unary
- *   → - unary
- *   → primary
- *
- * primary
- *   → number
- *   → identifier
- *   → "(" expression ")"
- *
- * This gives us normal mathematical precedence:
- *
- * multiplication/division
- * before
- * addition/subtraction.
- */
+class Parser {
+  private index = 0;
 
-function parseArithmeticExpression(
-  Z3: Context,
-  tokens: Token[],
-  values: Record<string, unknown>,
-): Z3Value {
-  let position = 0;
+  constructor(
+    private readonly tokens: Token[],
+    private readonly Z3: Context,
+    private readonly values: Record<
+      string,
+      unknown
+    >,
+  ) { }
 
-  function current(): Token | undefined {
-    return tokens[position];
+  private current(): Token | undefined {
+    return this.tokens[this.index];
   }
 
-  function consume(): Token {
-    const token = current();
+  private consume(): Token {
+    const token = this.current();
 
     if (!token) {
       throw new Error(
-        "Unexpected end of expression.",
+        "Unexpected end of condition.",
       );
     }
 
-    position++;
+    this.index++;
 
     return token;
   }
 
-  function parseExpression(): Z3Value {
-    let left = parseTerm();
+  private expectOperator(
+    operator: string,
+  ) {
+    const token = this.consume();
+
+    if (
+      token.type !== "operator" ||
+      token.value !== operator
+    ) {
+      throw new Error(
+        `Expected operator "${operator}".`,
+      );
+    }
+  }
+
+  parse(): Z3Value {
+    const result = this.parseComparison();
+
+    if (this.current()) {
+      throw new Error(
+        `Unexpected token: ${this.current()!.value}`,
+      );
+    }
+
+    return result;
+  }
+
+  /*
+   * comparison
+   *
+   * expression:
+   * amount <= payment_amount
+   * payment_status == "paid"
+   */
+  private parseComparison(): Z3Value {
+    let left = this.parseExpression();
+
+    const token = this.current();
+
+    if (
+      token?.type === "operator" &&
+      COMPARISON_OPERATORS.includes(
+        token.value,
+      )
+    ) {
+      const operator = this.consume().value;
+
+      const right =
+        this.parseExpression();
+
+      switch (operator) {
+        case "<=":
+          return left.le(right);
+
+        case ">=":
+          return left.ge(right);
+
+        case "==":
+          return left.eq(right);
+
+        case "!=":
+          return left.neq(right);
+
+        case "<":
+          return left.lt(right);
+
+        case ">":
+          return left.gt(right);
+
+        default:
+          throw new Error(
+            `Unsupported comparison operator: ${operator}`,
+          );
+      }
+    }
+
+    return left;
+  }
+
+  /*
+   * expression
+   *
+   * addition/subtraction
+   */
+  private parseExpression(): Z3Value {
+    let left = this.parseTerm();
 
     while (true) {
-      const token = current();
+      const token = this.current();
 
       if (
-        !token ||
-        token.type !== "operator" ||
-        !["+", "-"].includes(token.value)
+        token?.type !== "operator" ||
+        (token.value !== "+" &&
+          token.value !== "-")
       ) {
         break;
       }
 
-      consume();
+      const operator = this.consume().value;
 
-      const right = parseTerm();
+      const right = this.parseTerm();
 
-      if (token.value === "+") {
+      if (operator === "+") {
         left = left.add(right);
       } else {
         left = left.sub(right);
@@ -433,25 +356,30 @@ function parseArithmeticExpression(
     return left;
   }
 
-  function parseTerm(): Z3Value {
-    let left = parseUnary();
+  /*
+   * term
+   *
+   * multiplication/division
+   */
+  private parseTerm(): Z3Value {
+    let left = this.parseUnary();
 
     while (true) {
-      const token = current();
+      const token = this.current();
 
       if (
-        !token ||
-        token.type !== "operator" ||
-        !["*", "/"].includes(token.value)
+        token?.type !== "operator" ||
+        (token.value !== "*" &&
+          token.value !== "/")
       ) {
         break;
       }
 
-      consume();
+      const operator = this.consume().value;
 
-      const right = parseUnary();
+      const right = this.parseUnary();
 
-      if (token.value === "*") {
+      if (operator === "*") {
         left = left.mul(right);
       } else {
         left = left.div(right);
@@ -461,87 +389,116 @@ function parseArithmeticExpression(
     return left;
   }
 
-  function parseUnary(): Z3Value {
-    const token = current();
+  /*
+   * unary
+   */
+  private parseUnary(): Z3Value {
+    const token = this.current();
 
     if (
       token?.type === "operator" &&
       token.value === "-"
     ) {
-      consume();
+      this.consume();
 
-      return parseUnary().neg();
+      return this.parseUnary().neg();
     }
 
-    return parsePrimary();
+    return this.parsePrimary();
   }
 
-  function parsePrimary(): Z3Value {
-    const token = consume();
+  /*
+   * primary
+   */
+  private parsePrimary(): Z3Value {
+    const token = this.consume();
 
     if (token.type === "number") {
-      return Z3.Real.val(token.value);
+      return this.Z3.Real.val(
+        token.value,
+      );
+    }
+
+    if (token.type === "string") {
+      return this.Z3.String.val(
+        token.value,
+      );
+    }
+
+    if (token.type === "boolean") {
+      return this.Z3.Bool.val(
+        token.value,
+      );
     }
 
     if (token.type === "identifier") {
-      if (!(token.value in values)) {
+      if (!(token.value in this.values)) {
         throw new Error(
           `Unknown value in constraint: ${token.value}`,
         );
       }
 
-      if (
-        typeof values[token.value] !== "number"
-      ) {
-        throw new Error(
-          `Constraint value must be numeric: ${token.value}`,
+      const value =
+        this.values[token.value];
+
+      if (typeof value === "number") {
+        return this.Z3.Real.const(
+          token.value,
         );
       }
 
-      return Z3.Real.const(token.value);
+      if (typeof value === "string") {
+        return this.Z3.String.const(
+          token.value,
+        );
+      }
+
+      if (typeof value === "boolean") {
+        return this.Z3.Bool.const(
+          token.value,
+        );
+      }
+
+      throw new Error(
+        `Unsupported value type for variable: ${token.value}`,
+      );
     }
 
     if (token.type === "leftParen") {
-      const expression =
-        parseExpression();
+      const result =
+        this.parseComparison();
 
-      const closing = current();
+      const closing = this.consume();
 
       if (
-        !closing ||
         closing.type !== "rightParen"
       ) {
         throw new Error(
-          "Missing closing parenthesis in constraint.",
+          'Expected ")".',
         );
       }
 
-      consume();
-
-      return expression;
+      return result;
     }
 
     throw new Error(
       `Unexpected token: ${token.value}`,
     );
   }
+}
 
-  const result = parseExpression();
+export function compileConstraint(
+  Z3: Context,
+  condition: string,
+  values: Record<string, unknown>,
+) {
+  const tokens = tokenize(condition);
 
-  if (position !== tokens.length) {
-    const unexpectedToken =
-      tokens[position];
+  const parser = new Parser(
+    tokens,
+    Z3,
+    values,
+  );
 
-    if (!unexpectedToken) {
-      throw new Error(
-        "Unexpected end of expression.",
-      );
-    }
-
-    throw new Error(
-      `Unexpected token: ${unexpectedToken.value}`,
-    );
-  }
-
-  return result;
+  return parser.parse();
 }

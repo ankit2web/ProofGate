@@ -32,7 +32,7 @@
     {
       "name": "payment_must_be_paid",
       "action": "refund_payment",
-      "condition": "payment_status == 1",
+      "condition": "payment_status == \"paid\"",
       "effect": "allow",
       "reason": "Only paid payments can be refunded."
     }

@@ -55,25 +55,23 @@ export async function verifyPolicy(
     console.log(`[ProofGate] Condition: ${rule.condition}`);
     console.log(`[ProofGate] Effect: ${rule.effect}`);
 
-    const constraint = compileConstraint(
-      Z3,
-      rule.condition,
-      proposedState,
-    );
+    const constraint = compileConstraint(Z3, rule.condition, proposedState);
 
     /*
      * Bind every numeric value in the proposed state
      * to its corresponding Z3 variable.
      */
-    for (const [key, value] of Object.entries(
-      proposedState,
-    )) {
+    for (const [key, value] of Object.entries(proposedState)) {
       if (typeof value === "number") {
-        solver.add(
-          Z3.Real.const(key).eq(
-            Z3.Real.val(value),
-          ),
-        );
+        solver.add(Z3.Real.const(key).eq(Z3.Real.val(value)));
+      }
+
+      if (typeof value === "string") {
+        solver.add(Z3.String.const(key).eq(Z3.String.val(value)));
+      }
+
+      if (typeof value === "boolean") {
+        solver.add(Z3.Bool.const(key).eq(Z3.Bool.val(value)));
       }
     }
 
@@ -85,9 +83,7 @@ export async function verifyPolicy(
 
     const resultStatus = result.toString();
 
-    console.log(
-      `[ProofGate] Rule "${rule.name}" → ${resultStatus}`,
-    );
+    console.log(`[ProofGate] Rule "${rule.name}" → ${resultStatus}`);
 
     solver.pop();
 

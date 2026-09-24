@@ -1,8 +1,5 @@
 import { getBalance, transfer } from "./fake-bank.js";
-import {
-  getPayment,
-  refundPayment,
-} from "./fake-payments.js";
+import { getPayment, refundPayment } from "./fake-payments.js";
 
 export type ToolRequest = {
   action: string;
@@ -14,18 +11,14 @@ export type ToolRequest = {
 export type ToolDefinition = {
   name: string;
 
-  getTrustedState: (
-    request: ToolRequest,
-  ) => Promise<Record<string, unknown>>;
+  getTrustedState: (request: ToolRequest) => Promise<Record<string, unknown>>;
 
   calculateAfterState: (
     request: ToolRequest,
     trustedState: Record<string, unknown>,
   ) => Record<string, unknown>;
 
-  execute: (
-    request: ToolRequest,
-  ) => Promise<unknown>;
+  execute: (request: ToolRequest) => Promise<unknown>;
 };
 
 const transferMoneyTool: ToolDefinition = {
@@ -37,10 +30,7 @@ const transferMoneyTool: ToolDefinition = {
     };
   },
 
-  calculateAfterState(
-    request,
-    trustedState,
-  ) {
+  calculateAfterState(request, trustedState) {
     const state: Record<string, unknown> = {
       ...request,
       ...trustedState,
@@ -50,8 +40,7 @@ const transferMoneyTool: ToolDefinition = {
       typeof trustedState.balance === "number" &&
       typeof request.amount === "number"
     ) {
-      state.balance_after =
-        trustedState.balance - request.amount;
+      state.balance_after = trustedState.balance - request.amount;
     }
 
     return state;
@@ -59,9 +48,7 @@ const transferMoneyTool: ToolDefinition = {
 
   async execute(request) {
     if (typeof request.amount !== "number") {
-      throw new Error(
-        "Transfer amount is required.",
-      );
+      throw new Error("Transfer amount is required.");
     }
 
     return transfer(request.amount);
@@ -73,39 +60,28 @@ const refundPaymentTool: ToolDefinition = {
 
   async getTrustedState(request) {
     if (!request.paymentId) {
-      throw new Error(
-        "Payment ID is required.",
-      );
+      throw new Error("Payment ID is required.");
     }
 
-    const payment = getPayment(
-      request.paymentId,
-    );
+    const payment = getPayment(request.paymentId);
 
     return {
       payment_amount: payment.amount,
-      payment_status:
-        payment.status === "paid" ? 1 : 0,
+      payment_status: payment.status,
     };
   },
 
-  calculateAfterState(
-    request,
-    trustedState,
-  ) {
+  calculateAfterState(request, trustedState) {
     const state: Record<string, unknown> = {
       ...request,
       ...trustedState,
     };
 
     if (
-      typeof trustedState.payment_amount ===
-        "number" &&
+      typeof trustedState.payment_amount === "number" &&
       typeof request.amount === "number"
     ) {
-      state.refund_after =
-        trustedState.payment_amount -
-        request.amount;
+      state.refund_after = trustedState.payment_amount - request.amount;
     }
 
     return state;
@@ -113,45 +89,28 @@ const refundPaymentTool: ToolDefinition = {
 
   async execute(request) {
     if (!request.paymentId) {
-      throw new Error(
-        "Payment ID is required.",
-      );
+      throw new Error("Payment ID is required.");
     }
 
     if (typeof request.amount !== "number") {
-      throw new Error(
-        "Refund amount is required.",
-      );
+      throw new Error("Refund amount is required.");
     }
 
-    return refundPayment(
-      request.paymentId,
-      request.amount,
-    );
+    return refundPayment(request.paymentId, request.amount);
   },
 };
 
 const tools = new Map<string, ToolDefinition>();
 
-tools.set(
-  transferMoneyTool.name,
-  transferMoneyTool,
-);
+tools.set(transferMoneyTool.name, transferMoneyTool);
 
-tools.set(
-  refundPaymentTool.name,
-  refundPaymentTool,
-);
+tools.set(refundPaymentTool.name, refundPaymentTool);
 
-export function getTool(
-  name: string,
-): ToolDefinition {
+export function getTool(name: string): ToolDefinition {
   const tool = tools.get(name);
 
   if (!tool) {
-    throw new Error(
-      `Unknown tool: ${name}`,
-    );
+    throw new Error(`Unknown tool: ${name}`);
   }
 
   return tool;
