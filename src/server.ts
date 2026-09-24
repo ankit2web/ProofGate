@@ -227,8 +227,21 @@ app.post("/execute", async (request, reply) => {
   // ------------------------------------
 
   try {
+    const executionRequest = {
+      action: result.data.action,
+      ...(result.data.environment !== undefined && {
+        environment: result.data.environment,
+      }),
+      ...(result.data.amount !== undefined && {
+        amount: result.data.amount,
+      }),
+      ...(result.data.balance !== undefined && {
+        balance: result.data.balance,
+      }),
+    };
+
     const executionResult =
-      await executeTool(result.data);
+      await executeTool(executionRequest);
 
     return reply.send({
       executed: true,
