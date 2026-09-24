@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { appendFile, mkdir } from "node:fs/promises";
 
 export type AuditEvent = {
+  traceId: string;
+
   request: Record<string, unknown>;
 
   trustedState: Record<string, unknown>;

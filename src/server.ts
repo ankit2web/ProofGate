@@ -6,6 +6,7 @@ import { getTrustedState } from "./state-provider.js";
 import { verifyPolicy } from "./policy-engine.js";
 import { loadPolicy } from "./policy-loader.js";
 import { writeAuditLog } from "./audit-logger.js";
+import { randomUUID } from "node:crypto";
 
 const app = Fastify({
   logger: true,
@@ -78,6 +79,8 @@ app.post("/verify", async (request, reply) => {
   /*
    * Load policy.
    */
+  const traceId = `pg_${randomUUID()}`;
+  
   const policy = await loadPolicy();
 
   console.log(
@@ -122,7 +125,8 @@ app.post("/verify", async (request, reply) => {
     proposedState,
   );
 
-  const data = {
+  const auditData = {
+    traceId,
     request: result.data,
     trustedState,
     proposedState,
@@ -134,7 +138,7 @@ app.post("/verify", async (request, reply) => {
     executed: false,
   }
   
-  await writeAuditLog(data);
+  await writeAuditLog(auditData);
 
   console.log(
     "[ProofGate] Verification result:",
@@ -193,6 +197,8 @@ app.post("/execute", async (request, reply) => {
   /*
    * Load policy.
    */
+  const traceId = `pg_${randomUUID()}`;
+
   const policy = await loadPolicy();
 
   console.log(
@@ -245,6 +251,7 @@ app.post("/execute", async (request, reply) => {
     );
 
     const auditData = {
+      traceId,
       request: result.data,
       trustedState,
       proposedState,
@@ -303,6 +310,7 @@ app.post("/execute", async (request, reply) => {
     );
 
     const auditData = {
+      traceId,
       request: result.data,
       trustedState,
       proposedState,
@@ -332,6 +340,7 @@ app.post("/execute", async (request, reply) => {
   );
 
   const auditData = {
+    traceId,
     request: result.data,
     trustedState,
     proposedState,
