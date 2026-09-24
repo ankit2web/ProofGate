@@ -12,6 +12,10 @@ export type AuditEvent = {
 
   policy: string;
 
+  policyVersion: string;
+
+  policyHash: string;
+
   decision: "ALLOW" | "BLOCK";
 
   violations: {
@@ -26,9 +30,7 @@ export type AuditEvent = {
   executionError?: string;
 };
 
-export async function writeAuditLog(
-  event: AuditEvent,
-) {
+export async function writeAuditLog(event: AuditEvent) {
   await mkdir("audit", {
     recursive: true,
   });
