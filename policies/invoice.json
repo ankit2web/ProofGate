@@ -1,0 +1,27 @@
+{
+  "name": "Invoice Protection",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "name": "invoice_amount_limit",
+      "action": "create_invoice",
+      "condition": "amount <= 50000",
+      "effect": "allow",
+      "reason": "Invoices cannot exceed ₹50,000."
+    },
+    {
+      "name": "customer_must_be_active",
+      "action": "create_invoice",
+      "condition": "customer_status == \"active\"",
+      "effect": "allow",
+      "reason": "Invoices can only be created for active customers."
+    },
+    {
+      "name": "currency_must_be_inr",
+      "action": "create_invoice",
+      "condition": "currency == \"INR\"",
+      "effect": "allow",
+      "reason": "Invoices must use INR."
+    }
+  ]
+}

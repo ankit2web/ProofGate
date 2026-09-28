@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyPolicy, type Policy } from "../src/policy-engine.js";
+import { loadPolicyForAction } from "../src/policy-loader.js";
 
 describe("Policy Engine", () => {
   const policy: Policy = {
@@ -183,5 +184,11 @@ describe("Policy Engine", () => {
         reason: "No policy rules are configured for this action.",
       },
     ]);
+  });
+
+  it("rejects an action with no matching policy", async () => {
+    await expect(loadPolicyForAction("unknown_action")).rejects.toThrow(
+      "No policy found for action: unknown_action",
+    );
   });
 });

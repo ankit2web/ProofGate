@@ -12,6 +12,7 @@ import {
   storeExecution,
   getExecution,
 } from "./idempotency-store.js";
+import { loadPolicyForAction } from "./policy-loader.js";
 
 export type ProofGateRequest = Record<string, unknown>;
 
@@ -62,7 +63,7 @@ export async function verify(
 
   const proposedState = calculateAfterState(validatedRequest, trustedState);
 
-  const policy = await loadPolicy();
+  const policy = await loadPolicyForAction(validatedRequest.action);
 
   const policyHash = hashPolicy(policy);
 
@@ -156,7 +157,7 @@ export async function execute(
 
   const proposedState = calculateAfterState(validatedRequest, trustedState);
 
-  const policy = await loadPolicy();
+  const policy = await loadPolicyForAction(validatedRequest.action);
 
   const policyHash = hashPolicy(policy);
 

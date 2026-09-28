@@ -70,6 +70,7 @@ describe("Tool Registry", () => {
       "transfer_money",
       "refund_payment",
       "send_notification",
+      "create_invoice",
     ]);
 
     expect(
