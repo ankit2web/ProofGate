@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  GENESIS_HASH,
   getNextAuditHash,
   hashAuditEvent,
+  verifyAuditChain,
   verifyAuditEvent,
 } from "../src/audit-chain.js";
 
@@ -112,5 +114,114 @@ describe("Audit Chain", () => {
         event_hash: eventHash,
       }),
     ).toBe(false);
+  });
+
+  it("verifies a valid audit chain", () => {
+    const firstEvent = {
+      id: "event_1",
+      action: "transfer_money",
+      amount: 1000,
+    };
+
+    const firstHash = hashAuditEvent(firstEvent, GENESIS_HASH);
+
+    const secondEvent = {
+      id: "event_2",
+      action: "transfer_money",
+      amount: 2000,
+    };
+
+    const secondHash = hashAuditEvent(secondEvent, firstHash);
+
+    const records = [
+      {
+        ...firstEvent,
+        previous_hash: GENESIS_HASH,
+        event_hash: firstHash,
+      },
+      {
+        ...secondEvent,
+        previous_hash: firstHash,
+        event_hash: secondHash,
+      },
+    ];
+
+    expect(verifyAuditChain(records)).toBe(true);
+  });
+
+  it("detects a tampered audit event", () => {
+    const event = {
+      id: "event_1",
+      action: "transfer_money",
+      amount: 1000,
+    };
+
+    const eventHash = hashAuditEvent(event, GENESIS_HASH);
+
+    const records = [
+      {
+        ...event,
+        amount: 9000,
+        previous_hash: GENESIS_HASH,
+        event_hash: eventHash,
+      },
+    ];
+
+    expect(verifyAuditChain(records)).toBe(false);
+  });
+
+  it("detects a broken audit chain link", () => {
+    const firstEvent = {
+      id: "event_1",
+      action: "transfer_money",
+      amount: 1000,
+    };
+
+    const firstHash = hashAuditEvent(firstEvent, GENESIS_HASH);
+
+    const secondEvent = {
+      id: "event_2",
+      action: "transfer_money",
+      amount: 2000,
+    };
+
+    const secondHash = hashAuditEvent(secondEvent, firstHash);
+
+    const records = [
+      {
+        ...firstEvent,
+        previous_hash: GENESIS_HASH,
+        event_hash: firstHash,
+      },
+      {
+        ...secondEvent,
+        previous_hash: "tampered_previous_hash",
+        event_hash: secondHash,
+      },
+    ];
+
+    expect(verifyAuditChain(records)).toBe(false);
+  });
+
+  it("detects a tampered event hash", () => {
+    const event = {
+      id: "event_1",
+      action: "transfer_money",
+      amount: 1000,
+    };
+
+    const records = [
+      {
+        ...event,
+        previous_hash: GENESIS_HASH,
+        event_hash: "tampered_hash",
+      },
+    ];
+
+    expect(verifyAuditChain(records)).toBe(false);
+  });
+
+  it("accepts an empty audit chain", () => {
+    expect(verifyAuditChain([])).toBe(true);
   });
 });

@@ -31,3 +31,29 @@ export function verifyAuditEvent(
 
   return expectedHash === record.event_hash;
 }
+
+export function verifyAuditChain(records: Record<string, unknown>[]): boolean {
+  let previousHash = GENESIS_HASH;
+
+  for (const record of records) {
+    const { previous_hash, event_hash, ...event } = record as AuditChainRecord &
+      Record<string, unknown>;
+
+    if (previous_hash !== previousHash) {
+      return false;
+    }
+
+    if (
+      !verifyAuditEvent(event, {
+        previous_hash,
+        event_hash,
+      })
+    ) {
+      return false;
+    }
+
+    previousHash = event_hash;
+  }
+
+  return true;
+}
