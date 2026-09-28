@@ -1,6 +1,9 @@
 import { getBalance, transfer } from "./fake-bank.js";
 import { getPayment, refundPayment } from "./fake-payments.js";
-import { sendNotification } from "./fake-notifications.js";
+import {
+  sendNotification,
+  isRecipientAuthorized,
+} from "./fake-notifications.js";
 import { z } from "zod";
 
 const TransferMoneyRequestSchema = z
@@ -175,7 +178,7 @@ const sendNotificationTool: ToolDefinition = {
   name: "send_notification",
 
   description:
-    "Send a notification through ProofGate after validating the request.",
+    "Send a notification through ProofGate after validating authorization.",
 
   mcpInputSchema: SendNotificationMcpInputSchema,
 
@@ -183,8 +186,14 @@ const sendNotificationTool: ToolDefinition = {
     return SendNotificationRequestSchema.parse(request);
   },
 
-  async getTrustedState() {
-    return {};
+  async getTrustedState(request) {
+    if (typeof request.recipient !== "string") {
+      throw new Error("Recipient is required.");
+    }
+
+    return {
+      recipient_authorized: isRecipientAuthorized(request.recipient),
+    };
   },
 
   calculateAfterState(request, trustedState) {

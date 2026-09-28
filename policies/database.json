@@ -38,11 +38,11 @@
       "reason": "Only paid payments can be refunded."
     },
     {
-      "name": "notification_recipient_required",
+      "name": "notification_recipient_authorized",
       "action": "send_notification",
-      "condition": "recipient != \"\"",
+      "condition": "recipient_authorized == true",
       "effect": "allow",
-      "reason": "Notification recipient cannot be empty."
+      "reason": "Notifications can only be sent to authorized recipients."
     }
   ]
 }

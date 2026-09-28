@@ -4,7 +4,13 @@ type Notification = {
   message: string;
 };
 
+const authorizedRecipients = new Set(["user@example.com"]);
+
 const notifications: Notification[] = [];
+
+export function isRecipientAuthorized(recipient: string) {
+  return authorizedRecipients.has(recipient);
+}
 
 export function sendNotification(recipient: string, message: string) {
   if (!recipient.trim()) {

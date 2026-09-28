@@ -282,4 +282,71 @@ describe("MCP Server", () => {
       message: "ProofGate is working.",
     });
   });
+
+  it("blocks notification to an unauthorized recipient", async () => {
+    const result = await client.callTool({
+      name: "send_notification",
+      arguments: {
+        recipient: "attacker@example.com",
+        message: "This should be blocked.",
+      },
+    });
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(result.isError).not.toBe(true);
+
+    expect(body.verification.allowed).toBe(false);
+
+    expect(body.verification.violations).toEqual([
+      {
+        rule: "notification_recipient_authorized",
+        reason: "Notifications can only be sent to authorized recipients.",
+      },
+    ]);
+
+    expect(body.executed).toBe(false);
+    expect(body.executionResult).toBeUndefined();
+  });
+
+  it("rejects caller-supplied trusted authorization state", async () => {
+    const result = await client.callTool({
+      name: "send_notification",
+      arguments: {
+        recipient: "attacker@example.com",
+        message: "This should never execute.",
+        recipient_authorized: true,
+      },
+    });
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    expect(result.isError).toBe(true);
+
+    expect(firstContent.text).toContain("Input validation error");
+
+    expect(firstContent.text).toContain("recipient_authorized");
+  });
 });
