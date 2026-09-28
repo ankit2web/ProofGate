@@ -41,8 +41,7 @@ export function createServer() {
               text: JSON.stringify(result, null, 2),
             },
           ],
-          isError:
-            !result.verification.allowed || Boolean(result.executionError),
+          isError: Boolean(result.executionError),
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -98,8 +97,7 @@ export function createServer() {
               text: JSON.stringify(result, null, 2),
             },
           ],
-          isError:
-            !result.verification.allowed || Boolean(result.executionError),
+          isError: Boolean(result.executionError),
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

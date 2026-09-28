@@ -85,7 +85,7 @@ describe("MCP Server", () => {
       },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).not.toBe(true);
 
     const content = result.content;
 
@@ -159,7 +159,7 @@ describe("MCP Server", () => {
       },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).not.toBe(true);
 
     const content = result.content;
 
@@ -196,7 +196,7 @@ describe("MCP Server", () => {
       },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).not.toBe(true);
 
     const content = result.content;
 
