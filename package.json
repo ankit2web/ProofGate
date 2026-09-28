@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "mcp": "tsx src/mcp-server.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
     "expr-eval": "^2.0.2",
     "fastify": "^5.12.5",
     "tsx": "^4.23.15",
