@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { execute, verify } from "../src/proofgate.js";
-
 import * as executor from "../src/tool-executor.js";
+import { resetBank } from "../src/fake-bank.js";
 
 describe("ProofGate Pipeline", () => {
   const traceId = "pg_test_123";
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetBank();
   });
 
   it("verifies a valid transfer", async () => {

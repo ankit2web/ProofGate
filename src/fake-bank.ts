@@ -21,3 +21,7 @@ export function transfer(amount: number) {
     remainingBalance: balance,
   };
 }
+
+export function resetBank() {
+  balance = 20000;
+}
