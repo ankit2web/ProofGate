@@ -4,18 +4,28 @@ import * as z from "zod/v4";
 import { randomUUID } from "node:crypto";
 
 import { execute } from "./proofgate.js";
+import { getTools } from "./tool-registry.js";
 
 export function createServer() {
   const server = new McpServer({
-    name: "proofgate",
+    name: "ProofGate MCP Server",
     version: "0.1.0",
   });
+
+  const tools = getTools();
+
+  const transferTool = tools.find((tool) => tool.name === "transfer_money");
+
+  const refundTool = tools.find((tool) => tool.name === "refund_payment");
+
+  if (!transferTool || !refundTool) {
+    throw new Error("Required ProofGate tools are not registered.");
+  }
 
   server.registerTool(
     "transfer_money",
     {
-      description:
-        "Transfer money through ProofGate. The request is verified against trusted bank state and configured policies before execution.",
+      description: transferTool.description,
       inputSchema: z.object({
         amount: z.number().positive(),
         environment: z
@@ -69,8 +79,7 @@ export function createServer() {
   server.registerTool(
     "refund_payment",
     {
-      description:
-        "Refund a payment through ProofGate. The payment state and refund amount are verified against configured policies before execution.",
+      description: refundTool.description,
       inputSchema: z.object({
         paymentId: z.string().min(1),
         amount: z.number().positive(),

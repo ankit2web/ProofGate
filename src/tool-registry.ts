@@ -28,7 +28,7 @@ export type ToolRequest = {
 
 export type ToolDefinition = {
   name: string;
-
+  description: string;
   validateRequest: (request: unknown) => ToolRequest;
 
   getTrustedState: (request: ToolRequest) => Promise<Record<string, unknown>>;
@@ -43,6 +43,9 @@ export type ToolDefinition = {
 
 const transferMoneyTool: ToolDefinition = {
   name: "transfer_money",
+
+  description:
+    "Transfer money through ProofGate. The request is verified against trusted bank state and configured policies before execution.",
 
   validateRequest(request) {
     return TransferMoneyRequestSchema.parse(request);
@@ -81,6 +84,9 @@ const transferMoneyTool: ToolDefinition = {
 
 const refundPaymentTool: ToolDefinition = {
   name: "refund_payment",
+
+  description:
+    "Refund a payment through ProofGate. The request is verified against trusted payment state and configured policies before execution.",
 
   validateRequest(request) {
     return RefundPaymentRequestSchema.parse(request);
@@ -142,4 +148,8 @@ export function getTool(name: string): ToolDefinition {
   }
 
   return tool;
+}
+
+export function getTools(): ToolDefinition[] {
+  return Array.from(tools.values());
 }

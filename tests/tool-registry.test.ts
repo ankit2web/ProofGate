@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getTool } from "../src/tool-registry.js";
+import { getTool, getTools } from "../src/tool-registry.js";
 
 describe("Tool Registry", () => {
   it("registers transfer_money", () => {
@@ -62,5 +62,20 @@ describe("Tool Registry", () => {
     expect(() => getTool("does_not_exist")).toThrow(
       "Unknown tool: does_not_exist",
     );
+  });
+
+  it("returns all registered tools", () => {
+    const tools = getTools();
+
+    expect(tools.map((tool: { name: any }) => tool.name)).toEqual([
+      "transfer_money",
+      "refund_payment",
+    ]);
+
+    expect(
+      tools.every(
+        (tool: { description: string | any[] }) => tool.description.length > 0,
+      ),
+    ).toBe(true);
   });
 });
