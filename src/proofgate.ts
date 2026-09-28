@@ -6,8 +6,17 @@ import { calculateAfterState } from "./state.js";
 import { executeTool } from "./tool-executor.js";
 import { getTool, type ToolRequest } from "./tool-registry.js";
 import { writeAuditLog } from "./audit-logger.js";
+import {
+  hashRequest,
+  storeExecution,
+  getExecution,
+} from "./idempotency-store.js";
 
 export type ProofGateRequest = Record<string, unknown>;
+
+export type ExecutionOptions = {
+  idempotencyKey?: string;
+};
 
 export type ProofGateResult = {
   traceId: string;
@@ -33,6 +42,7 @@ export type ProofGateResult = {
   };
 
   executed: boolean;
+  replayed: boolean;
 
   executionResult?: unknown;
 
@@ -81,6 +91,8 @@ export async function verify(
     violations: verification.violations,
 
     executed: false,
+
+    replayed: false,
   });
 
   return {
@@ -101,17 +113,43 @@ export async function verify(
     verification,
 
     executed: false,
+    replayed: false,
   };
 }
 
 export async function execute(
   request: ProofGateRequest,
   traceId: string,
-  executeFn: typeof executeTool = executeTool,
+  options: ExecutionOptions = {},
 ): Promise<ProofGateResult> {
   const tool = getTool(String(request.action));
 
   const validatedRequest = tool.validateRequest(request);
+
+  const idempotencyKey = options.idempotencyKey;
+  const requestHash = idempotencyKey
+    ? hashRequest(validatedRequest)
+    : undefined;
+
+  if (idempotencyKey && requestHash) {
+    const existingExecution = getExecution(idempotencyKey);
+
+    if (existingExecution) {
+      if (existingExecution.requestHash !== requestHash) {
+        throw new Error(
+          "Idempotency key has already been used for a different request.",
+        );
+      }
+
+      const previousResult = existingExecution.result as ProofGateResult;
+
+      return {
+        ...previousResult,
+        traceId,
+        replayed: true,
+      };
+    }
+  }
 
   const trustedState = await getTrustedState(validatedRequest);
 
@@ -148,6 +186,8 @@ export async function execute(
       violations: verification.violations,
 
       executed: false,
+
+      replayed: false,
     });
 
     return {
@@ -168,6 +208,7 @@ export async function execute(
       verification,
 
       executed: false,
+      replayed: false,
     };
   }
 
@@ -176,6 +217,36 @@ export async function execute(
       validatedRequest as ToolRequest,
       trustedState,
     );
+
+    const result: ProofGateResult = {
+      traceId,
+
+      request: validatedRequest,
+
+      trustedState,
+
+      proposedState,
+
+      policy: {
+        name: policy.name,
+        version: policy.version,
+        hash: policyHash,
+      },
+
+      verification,
+
+      executed: true,
+      replayed: false,
+
+      executionResult,
+    };
+
+    if (idempotencyKey && requestHash) {
+      storeExecution(idempotencyKey, {
+        requestHash,
+        result,
+      });
+    }
 
     await writeAuditLog({
       traceId,
@@ -201,27 +272,7 @@ export async function execute(
       executionResult,
     });
 
-    return {
-      traceId,
-
-      request: validatedRequest,
-
-      trustedState,
-
-      proposedState,
-
-      policy: {
-        name: policy.name,
-        version: policy.version,
-        hash: policyHash,
-      },
-
-      verification,
-
-      executed: true,
-
-      executionResult,
-    };
+    return result;
   } catch (error) {
     const executionError =
       error instanceof Error ? error.message : String(error);
@@ -247,6 +298,8 @@ export async function execute(
 
       executed: false,
 
+      replayed: false,
+
       executionError,
     });
 
@@ -268,6 +321,8 @@ export async function execute(
       verification,
 
       executed: false,
+
+      replayed: false,
 
       executionError,
     };

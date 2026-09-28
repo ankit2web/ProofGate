@@ -25,6 +25,8 @@ export type AuditEvent = {
 
   executed: boolean;
 
+  replayed?: boolean;
+
   executionResult?: unknown;
 
   executionError?: string;

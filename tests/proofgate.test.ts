@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { execute, verify } from "../src/proofgate.js";
 import * as executor from "../src/tool-executor.js";
 import { resetBank, transfer } from "../src/fake-bank.js";
+import { resetIdempotencyStore } from "../src/idempotency-store.js";
 
 describe("ProofGate Pipeline", () => {
   const traceId = "pg_test_123";
@@ -9,6 +10,7 @@ describe("ProofGate Pipeline", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     resetBank();
+    resetIdempotencyStore();
   });
 
   it("verifies a valid transfer", async () => {
@@ -170,6 +172,69 @@ describe("ProofGate Pipeline", () => {
         balance: 20000,
         state_version: 1,
       },
+    );
+  });
+
+  it("executes a new idempotent operation once", async () => {
+    const executeToolSpy = vi.spyOn(executor, "executeTool");
+
+    const first = await execute(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      "pg_first",
+      {
+        idempotencyKey: "operation_123",
+      },
+    );
+
+    const second = await execute(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      "pg_second",
+      {
+        idempotencyKey: "operation_123",
+      },
+    );
+
+    expect(first.executed).toBe(true);
+    expect(second.executed).toBe(true);
+
+    expect(first.replayed).toBe(false);
+    expect(second.replayed).toBe(true);
+    expect(second.traceId).toBe("pg_second");
+
+    expect(executeToolSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects reuse of an idempotency key for a different request", async () => {
+    await execute(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      "pg_first",
+      {
+        idempotencyKey: "operation_456",
+      },
+    );
+
+    await expect(
+      execute(
+        {
+          action: "transfer_money",
+          amount: 6000,
+        },
+        "pg_second",
+        {
+          idempotencyKey: "operation_456",
+        },
+      ),
+    ).rejects.toThrow(
+      "Idempotency key has already been used for a different request.",
     );
   });
 });
