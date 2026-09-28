@@ -29,6 +29,8 @@ export type ToolRequest = {
 export type ToolDefinition = {
   name: string;
   description: string;
+  mcpInputSchema: z.ZodObject;
+
   validateRequest: (request: unknown) => ToolRequest;
 
   getTrustedState: (request: ToolRequest) => Promise<Record<string, unknown>>;
@@ -41,12 +43,27 @@ export type ToolDefinition = {
   execute: (request: ToolRequest) => Promise<unknown>;
 };
 
+const TransferMoneyMcpInputSchema = z
+  .object({
+    amount: z.number().positive(),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+  })
+  .strict();
+
+const RefundPaymentMcpInputSchema = z
+  .object({
+    paymentId: z.string().min(1),
+    amount: z.number().positive(),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+  })
+  .strict();
+
 const transferMoneyTool: ToolDefinition = {
   name: "transfer_money",
 
   description:
     "Transfer money through ProofGate. The request is verified against trusted bank state and configured policies before execution.",
-
+  mcpInputSchema: TransferMoneyMcpInputSchema,
   validateRequest(request) {
     return TransferMoneyRequestSchema.parse(request);
   },
@@ -87,7 +104,7 @@ const refundPaymentTool: ToolDefinition = {
 
   description:
     "Refund a payment through ProofGate. The request is verified against trusted payment state and configured policies before execution.",
-
+  mcpInputSchema: RefundPaymentMcpInputSchema,
   validateRequest(request) {
     return RefundPaymentRequestSchema.parse(request);
   },

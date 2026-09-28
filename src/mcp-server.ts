@@ -23,21 +23,16 @@ export function createServer() {
   }
 
   server.registerTool(
-    "transfer_money",
+    transferTool.name,
     {
       description: transferTool.description,
-      inputSchema: z.object({
-        amount: z.number().positive(),
-        environment: z
-          .enum(["development", "staging", "production"])
-          .optional(),
-      }),
+      inputSchema: transferTool.mcpInputSchema,
     },
     async (args) => {
       const traceId = `pg_${randomUUID()}`;
 
       const request = {
-        action: "transfer_money",
+        action: transferTool.name,
         ...args,
       };
 
@@ -77,22 +72,16 @@ export function createServer() {
   );
 
   server.registerTool(
-    "refund_payment",
+    refundTool.name,
     {
       description: refundTool.description,
-      inputSchema: z.object({
-        paymentId: z.string().min(1),
-        amount: z.number().positive(),
-        environment: z
-          .enum(["development", "staging", "production"])
-          .optional(),
-      }),
+      inputSchema: refundTool.mcpInputSchema,
     },
     async (args) => {
       const traceId = `pg_${randomUUID()}`;
 
       const request = {
-        action: "refund_payment",
+        action: refundTool.name,
         ...args,
       };
 
