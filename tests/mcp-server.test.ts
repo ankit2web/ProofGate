@@ -223,4 +223,10 @@ describe("MCP Server", () => {
       },
     ]);
   });
+
+  it("exposes all registered ProofGate tools through MCP", async () => {
+    const result = await client.listTools();
+    const toolNames = result.tools.map((tool) => tool.name).sort();
+    expect(toolNames).toEqual(["refund_payment", "transfer_money"]);
+  });
 });
