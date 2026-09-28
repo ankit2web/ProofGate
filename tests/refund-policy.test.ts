@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { verifyPolicy, type Policy } from "../src/policy-engine.js";
 
-import { getTool } from "../src/tool-registry.js";
+import { toolRegistry } from "../src/tool-registry-instance.js";
 
 describe("Refund Policy", () => {
   const policy: Policy = {
@@ -28,7 +28,7 @@ describe("Refund Policy", () => {
   };
 
   it("allows a valid refund", async () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const request = {
       action: "refund_payment",
@@ -47,7 +47,7 @@ describe("Refund Policy", () => {
   });
 
   it("blocks a refund larger than the payment", async () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const request = {
       action: "refund_payment",
@@ -73,7 +73,7 @@ describe("Refund Policy", () => {
   });
 
   it("blocks a refund for an already refunded payment", async () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const request = {
       action: "refund_payment",

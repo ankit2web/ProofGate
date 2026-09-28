@@ -4,7 +4,8 @@ import { verifyPolicy } from "./policy-engine.js";
 import { getTrustedState } from "./state-provider.js";
 import { calculateAfterState } from "./state.js";
 import { executeTool } from "./tool-executor.js";
-import { getTool, type ToolRequest } from "./tool-registry.js";
+import { toolRegistry } from "./tool-registry-instance.js";
+import type { ToolRequest } from "./tool-definition.js";
 import { writeAuditLog } from "./audit-logger.js";
 import {
   hashRequest,
@@ -53,7 +54,7 @@ export async function verify(
   request: ProofGateRequest,
   traceId: string,
 ): Promise<ProofGateResult> {
-  const tool = getTool(String(request.action));
+  const tool = toolRegistry.getTool(String(request.action));
 
   const validatedRequest = tool.validateRequest(request);
 
@@ -122,7 +123,7 @@ export async function execute(
   traceId: string,
   options: ExecutionOptions = {},
 ): Promise<ProofGateResult> {
-  const tool = getTool(String(request.action));
+  const tool = toolRegistry.getTool(String(request.action));
 
   const validatedRequest = tool.validateRequest(request);
 

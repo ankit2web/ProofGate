@@ -81,17 +81,29 @@ describe("Execution Boundary", () => {
 
     expect(verification.allowed).toBe(true);
 
-    await toolExecutor.executeTool({
-      action: "transfer_money",
-      amount: 5000,
-    });
+    await toolExecutor.executeTool(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      {
+        balance: 20000,
+        state_version: 1,
+      },
+    );
 
     expect(executeSpy).toHaveBeenCalledTimes(1);
 
-    expect(executeSpy).toHaveBeenCalledWith({
-      action: "transfer_money",
-      amount: 5000,
-    });
+    expect(executeSpy).toHaveBeenCalledWith(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      {
+        balance: 20000,
+        state_version: 1,
+      },
+    );
 
     executeSpy.mockRestore();
   });

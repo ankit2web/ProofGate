@@ -1,22 +1,21 @@
 import { describe, expect, it } from "vitest";
-
-import { getTool, getTools } from "../src/tool-registry.js";
+import { toolRegistry } from "../src/tool-registry-instance.js";
 
 describe("Tool Registry", () => {
   it("registers transfer_money", () => {
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(tool.name).toBe("transfer_money");
   });
 
   it("registers refund_payment", () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     expect(tool.name).toBe("refund_payment");
   });
 
   it("retrieves trusted payment state", async () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const state = await tool.getTrustedState({
       action: "refund_payment",
@@ -31,7 +30,7 @@ describe("Tool Registry", () => {
   });
 
   it("calculates the proposed refund state", async () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const trustedState = await tool.getTrustedState({
       action: "refund_payment",
@@ -59,13 +58,13 @@ describe("Tool Registry", () => {
   });
 
   it("rejects an unknown tool", () => {
-    expect(() => getTool("does_not_exist")).toThrow(
+    expect(() => toolRegistry.getTool("does_not_exist")).toThrow(
       "Unknown tool: does_not_exist",
     );
   });
 
   it("returns all registered tools", () => {
-    const tools = getTools();
+    const tools = toolRegistry.getTools();
 
     expect(tools.map((tool: { name: string }) => tool.name)).toEqual([
       "transfer_money",

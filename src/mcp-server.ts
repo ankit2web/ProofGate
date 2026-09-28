@@ -3,7 +3,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { randomUUID } from "node:crypto";
 
 import { execute } from "./proofgate.js";
-import { getTools } from "./tool-registry.js";
+import { toolRegistry } from "./tool-registry-instance.js";
 
 export function createServer() {
   const server = new McpServer({
@@ -11,7 +11,7 @@ export function createServer() {
     version: "0.1.0",
   });
 
-  const tools = getTools();
+  const tools = toolRegistry.getTools();
 
   for (const tool of tools) {
     server.registerTool(

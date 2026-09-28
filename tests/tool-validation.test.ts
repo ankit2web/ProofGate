@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-
-import { getTool } from "../src/tool-registry.js";
+import { toolRegistry } from "../src/tool-registry-instance.js";
 
 describe("Tool Request Validation", () => {
   it("accepts a valid transfer request", () => {
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     const request = tool.validateRequest({
       action: "transfer_money",
@@ -18,7 +17,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("rejects a transfer with a negative amount", () => {
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(() =>
       tool.validateRequest({
@@ -29,7 +28,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("rejects a transfer with zero amount", () => {
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(() =>
       tool.validateRequest({
@@ -40,7 +39,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("rejects unexpected transfer fields", () => {
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(() =>
       tool.validateRequest({
@@ -52,7 +51,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("rejects a refund without paymentId", () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     expect(() =>
       tool.validateRequest({
@@ -63,7 +62,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("rejects a refund with zero amount", () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     expect(() =>
       tool.validateRequest({
@@ -75,7 +74,7 @@ describe("Tool Request Validation", () => {
   });
 
   it("accepts a valid refund request", () => {
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     const request = tool.validateRequest({
       action: "refund_payment",

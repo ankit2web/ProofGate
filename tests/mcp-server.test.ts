@@ -3,7 +3,7 @@ import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { createServer } from "../src/mcp-server.js";
 import { resetBank } from "../src/fake-bank.js";
 import { resetPayments } from "../src/fake-payments.js";
-import { getTools } from "../src/tool-registry.js";
+import { toolRegistry } from "../src/tool-registry-instance.js";
 import { resetNotifications } from "../src/fake-notifications.js";
 
 describe("MCP Server", () => {
@@ -228,7 +228,7 @@ describe("MCP Server", () => {
   it("exposes all registered ProofGate tools through MCP", async () => {
     const result = await client.listTools();
 
-    const registeredTools = getTools();
+    const registeredTools = toolRegistry.getTools();
 
     expect(result.tools).toHaveLength(registeredTools.length);
 

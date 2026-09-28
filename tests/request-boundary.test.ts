@@ -4,13 +4,13 @@ import * as stateProvider from "../src/state-provider.js";
 import * as state from "../src/state.js";
 import * as executor from "../src/tool-executor.js";
 
-import { getTool } from "../src/tool-registry.js";
+import { toolRegistry } from "../src/tool-registry-instance.js";
 
 describe("Request Validation Boundary", () => {
   it("rejects an invalid transfer before trusted state retrieval", async () => {
     const getTrustedStateSpy = vi.spyOn(stateProvider, "getTrustedState");
 
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(() =>
       tool.validateRequest({
@@ -27,7 +27,7 @@ describe("Request Validation Boundary", () => {
   it("rejects an invalid refund before trusted state retrieval", async () => {
     const getTrustedStateSpy = vi.spyOn(stateProvider, "getTrustedState");
 
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     expect(() =>
       tool.validateRequest({
@@ -44,7 +44,7 @@ describe("Request Validation Boundary", () => {
   it("does not execute an invalid transfer", () => {
     const executeToolSpy = vi.spyOn(executor, "executeTool");
 
-    const tool = getTool("transfer_money");
+    const tool = toolRegistry.getTool("transfer_money");
 
     expect(() =>
       tool.validateRequest({
@@ -61,7 +61,7 @@ describe("Request Validation Boundary", () => {
   it("does not calculate state for an invalid refund", () => {
     const calculateAfterStateSpy = vi.spyOn(state, "calculateAfterState");
 
-    const tool = getTool("refund_payment");
+    const tool = toolRegistry.getTool("refund_payment");
 
     expect(() =>
       tool.validateRequest({
