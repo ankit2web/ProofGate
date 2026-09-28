@@ -107,6 +107,7 @@ export async function verify(
 export async function execute(
   request: ProofGateRequest,
   traceId: string,
+  executeFn: typeof executeTool = executeTool,
 ): Promise<ProofGateResult> {
   const tool = getTool(String(request.action));
 
@@ -171,7 +172,10 @@ export async function execute(
   }
 
   try {
-    const executionResult = await executeTool(validatedRequest as ToolRequest);
+    const executionResult = await executeTool(
+      validatedRequest as ToolRequest,
+      trustedState,
+    );
 
     await writeAuditLog({
       traceId,

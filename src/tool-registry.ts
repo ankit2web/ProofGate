@@ -1,4 +1,4 @@
-import { getBalance, transfer } from "./fake-bank.js";
+import { getBankState, transfer } from "./fake-bank.js";
 import { getPayment, refundPayment } from "./fake-payments.js";
 import {
   sendNotification,
@@ -63,7 +63,10 @@ export type ToolDefinition = {
     trustedState: Record<string, unknown>,
   ) => Record<string, unknown>;
 
-  execute: (request: ToolRequest) => Promise<unknown>;
+  execute: (
+    request: ToolRequest,
+    trustedState: Record<string, unknown>,
+  ) => Promise<unknown>;
 };
 
 const TransferMoneyMcpInputSchema = z
@@ -91,11 +94,7 @@ const transferMoneyTool: ToolDefinition = {
     return TransferMoneyRequestSchema.parse(request);
   },
 
-  async getTrustedState() {
-    return {
-      balance: getBalance(),
-    };
-  },
+  getTrustedState: async () => getBankState(),
 
   calculateAfterState(request, trustedState) {
     const state: Record<string, unknown> = {
@@ -113,12 +112,16 @@ const transferMoneyTool: ToolDefinition = {
     return state;
   },
 
-  async execute(request) {
+  async execute(request, trustedState) {
     if (typeof request.amount !== "number") {
       throw new Error("Transfer amount is required.");
     }
 
-    return transfer(request.amount);
+    if (typeof trustedState.state_version !== "number") {
+      throw new Error("Trusted bank state version is required.");
+    }
+
+    return transfer(request.amount, trustedState.state_version);
   },
 };
 
@@ -161,7 +164,7 @@ const refundPaymentTool: ToolDefinition = {
     return state;
   },
 
-  async execute(request) {
+  async execute(request, _trustedState) {
     if (!request.paymentId) {
       throw new Error("Payment ID is required.");
     }
@@ -203,7 +206,7 @@ const sendNotificationTool: ToolDefinition = {
     };
   },
 
-  async execute(request) {
+  async execute(request, _trustedState) {
     if (typeof request.recipient !== "string") {
       throw new Error("Recipient is required.");
     }

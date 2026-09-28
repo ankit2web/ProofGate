@@ -45,6 +45,7 @@ describe("HTTP Integration", () => {
 
     expect(body.trustedState).toEqual({
       balance: 20000,
+      state_version: 1,
     });
 
     expect(body.proposedState).toEqual({
@@ -52,6 +53,7 @@ describe("HTTP Integration", () => {
       amount: 5000,
       balance: 20000,
       balance_after: 15000,
+      state_version: 1,
     });
   });
 

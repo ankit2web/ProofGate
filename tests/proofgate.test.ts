@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { execute, verify } from "../src/proofgate.js";
 import * as executor from "../src/tool-executor.js";
-import { resetBank } from "../src/fake-bank.js";
+import { resetBank, transfer } from "../src/fake-bank.js";
 
 describe("ProofGate Pipeline", () => {
   const traceId = "pg_test_123";
@@ -105,5 +105,71 @@ describe("ProofGate Pipeline", () => {
         traceId,
       ),
     ).rejects.toThrow();
+  });
+
+  it("rejects execution when trusted bank state becomes stale", async () => {
+    const verified = await verify(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      traceId,
+    );
+
+    expect(verified.verification.allowed).toBe(true);
+
+    expect(verified.trustedState).toEqual({
+      balance: 20000,
+      state_version: 1,
+    });
+
+    // Another transaction changes the bank.
+    transfer(15000);
+
+    expect(
+      await import("../src/fake-bank.js").then((bank) => bank.getBankState()),
+    ).toEqual({
+      balance: 5000,
+      state_version: 2,
+    });
+
+    // Try to execute using the stale state from ProofGate verification.
+    await expect(
+      executor.executeTool(
+        verified.request as {
+          action: string;
+          amount: number;
+        },
+        verified.trustedState,
+      ),
+    ).rejects.toThrow("Bank state changed after verification");
+  });
+
+  it("passes the verified trusted state to execution", async () => {
+    const executeToolSpy = vi.spyOn(executor, "executeTool").mockResolvedValue({
+      success: true,
+    });
+
+    const result = await execute(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      traceId,
+    );
+
+    expect(result.verification.allowed).toBe(true);
+    expect(result.executed).toBe(true);
+
+    expect(executeToolSpy).toHaveBeenCalledWith(
+      {
+        action: "transfer_money",
+        amount: 5000,
+      },
+      {
+        balance: 20000,
+        state_version: 1,
+      },
+    );
   });
 });
