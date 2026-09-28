@@ -4,42 +4,43 @@ type Payment = {
   status: "paid" | "refunded";
 };
 
-const payments = new Map<string, Payment>([
-  [
-    "payment_001",
-    {
-      id: "payment_001",
-      amount: 5000,
-      status: "paid",
-    },
-  ],
-  [
-    "payment_002",
-    {
-      id: "payment_002",
-      amount: 10000,
-      status: "paid",
-    },
-  ],
-  [
-    "payment_003",
-    {
-      id: "payment_003",
-      amount: 3000,
-      status: "refunded",
-    },
-  ],
-]);
+const initialPayments: Payment[] = [
+  {
+    id: "payment_001",
+    amount: 5000,
+    status: "paid",
+  },
+  {
+    id: "payment_002",
+    amount: 10000,
+    status: "paid",
+  },
+  {
+    id: "payment_003",
+    amount: 3000,
+    status: "refunded",
+  },
+];
 
-export function getPayment(
-  paymentId: string,
-) {
+const payments = new Map<string, Payment>();
+
+export function resetPayments() {
+  payments.clear();
+
+  for (const payment of initialPayments) {
+    payments.set(payment.id, {
+      ...payment,
+    });
+  }
+}
+
+resetPayments();
+
+export function getPayment(paymentId: string) {
   const payment = payments.get(paymentId);
 
   if (!payment) {
-    throw new Error(
-      `Payment not found: ${paymentId}`,
-    );
+    throw new Error(`Payment not found: ${paymentId}`);
   }
 
   return {
@@ -47,16 +48,11 @@ export function getPayment(
   };
 }
 
-export function refundPayment(
-  paymentId: string,
-  amount: number,
-) {
+export function refundPayment(paymentId: string, amount: number) {
   const payment = payments.get(paymentId);
 
   if (!payment) {
-    throw new Error(
-      `Payment not found: ${paymentId}`,
-    );
+    throw new Error(`Payment not found: ${paymentId}`);
   }
 
   if (payment.status !== "paid") {
@@ -66,15 +62,11 @@ export function refundPayment(
   }
 
   if (amount <= 0) {
-    throw new Error(
-      "Refund amount must be positive.",
-    );
+    throw new Error("Refund amount must be positive.");
   }
 
   if (amount > payment.amount) {
-    throw new Error(
-      "Refund amount cannot exceed payment amount.",
-    );
+    throw new Error("Refund amount cannot exceed payment amount.");
   }
 
   payment.status = "refunded";
@@ -83,8 +75,7 @@ export function refundPayment(
     success: true,
     paymentId,
     refunded: amount,
-    originalPaymentAmount:
-      payment.amount,
+    originalPaymentAmount: payment.amount,
     status: payment.status,
   };
 }

@@ -1,11 +1,11 @@
-import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
+import { randomUUID } from "node:crypto";
 
-import { verify, execute } from "./proofgate.js";
+import { execute } from "./proofgate.js";
 
-function createServer() {
+export function createServer() {
   const server = new McpServer({
     name: "proofgate",
     version: "0.1.0",
@@ -16,12 +16,12 @@ function createServer() {
     {
       description:
         "Transfer money through ProofGate. The request is verified against trusted bank state and configured policies before execution.",
-      inputSchema: {
+      inputSchema: z.object({
         amount: z.number().positive(),
         environment: z
           .enum(["development", "staging", "production"])
           .optional(),
-      },
+      }),
     },
     async (args) => {
       const traceId = `pg_${randomUUID()}`;
@@ -72,13 +72,13 @@ function createServer() {
     {
       description:
         "Refund a payment through ProofGate. The payment state and refund amount are verified against configured policies before execution.",
-      inputSchema: {
+      inputSchema: z.object({
         paymentId: z.string().min(1),
         amount: z.number().positive(),
         environment: z
           .enum(["development", "staging", "production"])
           .optional(),
-      },
+      }),
     },
     async (args) => {
       const traceId = `pg_${randomUUID()}`;
@@ -127,4 +127,6 @@ function createServer() {
   return server;
 }
 
-void serveStdio(createServer);
+if (process.argv[1]?.endsWith("mcp-server.ts")) {
+  serveStdio(createServer);
+}
