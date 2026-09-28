@@ -4,6 +4,7 @@ import { createServer } from "../src/mcp-server.js";
 import { resetBank } from "../src/fake-bank.js";
 import { resetPayments } from "../src/fake-payments.js";
 import { getTools } from "../src/tool-registry.js";
+import { resetNotifications } from "../src/fake-notifications.js";
 
 describe("MCP Server", () => {
   let client: Client;
@@ -12,6 +13,7 @@ describe("MCP Server", () => {
   beforeEach(async () => {
     resetBank();
     resetPayments();
+    resetNotifications();
 
     server = createServer();
 
@@ -241,5 +243,41 @@ describe("MCP Server", () => {
 
       expect(mcpTool?.inputSchema).toBeDefined();
     }
+  });
+
+  it("executes a non-financial registered tool through MCP", async () => {
+    const result = await client.callTool({
+      name: "send_notification",
+      arguments: {
+        recipient: "user@example.com",
+        message: "ProofGate is working.",
+      },
+    });
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(result.isError).not.toBe(true);
+
+    expect(body.verification.allowed).toBe(true);
+    expect(body.executed).toBe(true);
+
+    expect(body.executionResult).toEqual({
+      success: true,
+      id: "notification_1",
+      recipient: "user@example.com",
+      message: "ProofGate is working.",
+    });
   });
 });

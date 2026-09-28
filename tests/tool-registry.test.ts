@@ -67,9 +67,10 @@ describe("Tool Registry", () => {
   it("returns all registered tools", () => {
     const tools = getTools();
 
-    expect(tools.map((tool: { name: any }) => tool.name)).toEqual([
+    expect(tools.map((tool: { name: string }) => tool.name)).toEqual([
       "transfer_money",
       "refund_payment",
+      "send_notification",
     ]);
 
     expect(

@@ -1,5 +1,6 @@
 import { getBalance, transfer } from "./fake-bank.js";
 import { getPayment, refundPayment } from "./fake-payments.js";
+import { sendNotification } from "./fake-notifications.js";
 import { z } from "zod";
 
 const TransferMoneyRequestSchema = z
@@ -19,11 +20,30 @@ const RefundPaymentRequestSchema = z
   })
   .strict();
 
+const SendNotificationMcpInputSchema = z
+  .object({
+    recipient: z.string().min(1),
+    message: z.string().min(1),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+  })
+  .strict();
+
+const SendNotificationRequestSchema = z
+  .object({
+    action: z.literal("send_notification"),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+    recipient: z.string().min(1),
+    message: z.string().min(1),
+  })
+  .strict();
+
 export type ToolRequest = {
   action: string;
   environment?: string | undefined;
   amount?: number;
   paymentId?: string;
+  recipient?: string;
+  message?: string;
 };
 
 export type ToolDefinition = {
@@ -151,11 +171,49 @@ const refundPaymentTool: ToolDefinition = {
   },
 };
 
+const sendNotificationTool: ToolDefinition = {
+  name: "send_notification",
+
+  description:
+    "Send a notification through ProofGate after validating the request.",
+
+  mcpInputSchema: SendNotificationMcpInputSchema,
+
+  validateRequest(request) {
+    return SendNotificationRequestSchema.parse(request);
+  },
+
+  async getTrustedState() {
+    return {};
+  },
+
+  calculateAfterState(request, trustedState) {
+    return {
+      ...trustedState,
+      ...request,
+    };
+  },
+
+  async execute(request) {
+    if (typeof request.recipient !== "string") {
+      throw new Error("Recipient is required.");
+    }
+
+    if (typeof request.message !== "string") {
+      throw new Error("Message is required.");
+    }
+
+    return sendNotification(request.recipient, request.message);
+  },
+};
+
 const tools = new Map<string, ToolDefinition>();
 
 tools.set(transferMoneyTool.name, transferMoneyTool);
 
 tools.set(refundPaymentTool.name, refundPaymentTool);
+
+tools.set(sendNotificationTool.name, sendNotificationTool);
 
 export function getTool(name: string): ToolDefinition {
   const tool = tools.get(name);
