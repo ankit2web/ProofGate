@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../tool-definition.js";
+import { createExternalInvoice } from "../external/invoice-service.js";
 
 const CreateInvoiceRequestSchema = z
   .object({
@@ -44,11 +45,16 @@ export const createInvoiceTool: ToolDefinition = {
   },
 
   async execute(request) {
+    const invoice = await createExternalInvoice(
+      request.amount as number,
+      request.currency as string,
+    );
+
     return {
       success: true,
-      invoiceId: `invoice_${Date.now()}`,
-      amount: request.amount,
-      currency: request.currency,
+      invoiceId: invoice.id,
+      amount: invoice.amount,
+      currency: invoice.currency,
     };
   },
 };
