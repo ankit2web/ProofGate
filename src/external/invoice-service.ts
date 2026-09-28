@@ -16,6 +16,10 @@ export async function createExternalInvoice(
     throw new Error("External invoice service unavailable.");
   }
 
+  if (executionDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, executionDelayMs));
+  }
+
   const invoice: Invoice = {
     id: `external_invoice_${invoices.length + 1}`,
     amount,
@@ -30,6 +34,7 @@ export async function createExternalInvoice(
 export function resetExternalInvoices() {
   invoices.length = 0;
   shouldFail = false;
+  executionDelayMs = 0;
 }
 
 export function setExternalInvoiceFailure(value: boolean) {
@@ -38,4 +43,10 @@ export function setExternalInvoiceFailure(value: boolean) {
 
 export function getExternalInvoices() {
   return [...invoices];
+}
+
+let executionDelayMs = 0;
+
+export function setExternalInvoiceExecutionDelay(milliseconds: number) {
+  executionDelayMs = milliseconds;
 }
