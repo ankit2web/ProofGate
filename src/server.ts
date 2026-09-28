@@ -3,7 +3,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { verify, execute } from "./proofgate.js";
 
-const app = Fastify({
+export const app = Fastify({
   logger: true,
 });
 
@@ -83,11 +83,21 @@ app.post("/execute", async (req, reply) => {
   }
 });
 
-app
-  .listen({
-    host: "127.0.0.1",
-    port: 3000,
-  })
-  .then(() => {
-    console.log("ProofGate running on http://127.0.0.1:3000");
-  });
+export async function startServer() {
+  await app
+    .listen({
+      host: "127.0.0.1",
+      port: 3000,
+    })
+    .then(() => {
+      console.log("ProofGate running on http://127.0.0.1:3000");
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}
+
+if (process.argv[1]?.endsWith("server.ts")) {
+  await startServer();
+}
