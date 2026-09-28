@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
-
 import { createServer } from "../src/mcp-server.js";
 import { resetBank } from "../src/fake-bank.js";
 import { resetPayments } from "../src/fake-payments.js";
+import { getTools } from "../src/tool-registry.js";
 
 describe("MCP Server", () => {
   let client: Client;
@@ -17,7 +16,7 @@ describe("MCP Server", () => {
     server = createServer();
 
     client = new Client({
-      name: "proofgate-test-client",
+      name: "ProofGate-MCP-Client",
       version: "1.0.0",
     });
 
@@ -226,7 +225,21 @@ describe("MCP Server", () => {
 
   it("exposes all registered ProofGate tools through MCP", async () => {
     const result = await client.listTools();
-    const toolNames = result.tools.map((tool) => tool.name).sort();
-    expect(toolNames).toEqual(["refund_payment", "transfer_money"]);
+
+    const registeredTools = getTools();
+
+    expect(result.tools).toHaveLength(registeredTools.length);
+
+    for (const registeredTool of registeredTools) {
+      const mcpTool = result.tools.find(
+        (tool) => tool.name === registeredTool.name,
+      );
+
+      expect(mcpTool).toBeDefined();
+
+      expect(mcpTool?.description).toBe(registeredTool.description);
+
+      expect(mcpTool?.inputSchema).toBeDefined();
+    }
   });
 });
