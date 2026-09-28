@@ -136,8 +136,52 @@ describe("Policy Engine", () => {
       },
     );
 
-    expect(result.allowed).toBe(true);
+    expect(result.allowed).toBe(false);
 
-    expect(result.violations).toEqual([]);
+    expect(result.violations).toEqual([
+      {
+        rule: "no_matching_policy",
+        reason: "No policy rules are configured for this action.",
+      },
+    ]);
+  });
+
+  it("blocks actions with no matching policy", async () => {
+    const policy = {
+      name: "Test Policy",
+      version: "1.0.0",
+      rules: [
+        {
+          name: "transfer_limit",
+          action: "transfer_money",
+          condition: "amount <= 10000",
+          effect: "allow" as const,
+          reason: "Transfers cannot exceed ₹10,000.",
+        },
+      ],
+    };
+
+    const result = await verifyPolicy(
+      policy,
+      {
+        action: "send_notification",
+        recipient: "user@example.com",
+        message: "Hello",
+      },
+      {
+        action: "send_notification",
+        recipient: "user@example.com",
+        message: "Hello",
+      },
+    );
+
+    expect(result.allowed).toBe(false);
+
+    expect(result.violations).toEqual([
+      {
+        rule: "no_matching_policy",
+        reason: "No policy rules are configured for this action.",
+      },
+    ]);
   });
 });

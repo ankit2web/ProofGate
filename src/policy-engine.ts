@@ -39,6 +39,22 @@ export async function verifyPolicy(
     reason: string;
   }[] = [];
 
+  const matchingRules = policy.rules.filter(
+    (rule) => rule.action === request.action,
+  );
+
+  if (matchingRules.length === 0) {
+    return {
+      allowed: false,
+      violations: [
+        {
+          rule: "no_matching_policy",
+          reason: "No policy rules are configured for this action.",
+        },
+      ],
+    };
+  }
+
   console.log("");
   console.log("########################################");
   console.log("🔥 POLICY ENGINE");
@@ -46,7 +62,7 @@ export async function verifyPolicy(
   console.log("Proposed State:", proposedState);
   console.log("########################################");
 
-  for (const rule of policy.rules) {
+  for (const rule of matchingRules) {
     if (rule.action !== request.action) {
       continue;
     }

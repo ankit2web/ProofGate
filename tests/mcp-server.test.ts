@@ -270,14 +270,15 @@ describe("MCP Server", () => {
 
     expect(result.isError).not.toBe(true);
 
-    expect(body.verification.allowed).toBe(true);
-    expect(body.executed).toBe(true);
+    expect(body.verification.allowed).toBe(false);
+    expect(body.verification.violations).toEqual([
+      {
+        rule: "no_matching_policy",
+        reason: "No policy rules are configured for this action.",
+      },
+    ]);
 
-    expect(body.executionResult).toEqual({
-      success: true,
-      id: "notification_1",
-      recipient: "user@example.com",
-      message: "ProofGate is working.",
-    });
+    expect(body.executed).toBe(false);
+    expect(body.executionResult).toBeUndefined();
   });
 });
