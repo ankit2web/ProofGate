@@ -36,6 +36,13 @@
       "condition": "payment_status == \"paid\"",
       "effect": "allow",
       "reason": "Only paid payments can be refunded."
+    },
+    {
+      "name": "notification_recipient_required",
+      "action": "send_notification",
+      "condition": "recipient != \"\"",
+      "effect": "allow",
+      "reason": "Notification recipient cannot be empty."
     }
   ]
 }
