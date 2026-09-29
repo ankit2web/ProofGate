@@ -5,6 +5,7 @@ import { resetBank } from "../src/fake-bank.js";
 import { resetPayments } from "../src/fake-payments.js";
 import { toolRegistry } from "../src/tool-registry-instance.js";
 import { resetNotifications } from "../src/fake-notifications.js";
+import { resetExternalInvoices } from "../src/external/invoice-service.js";
 
 describe("MCP Server", () => {
   let client: Client;
@@ -14,6 +15,7 @@ describe("MCP Server", () => {
     resetBank();
     resetPayments();
     resetNotifications();
+    resetExternalInvoices();
 
     server = createServer();
 
@@ -348,5 +350,156 @@ describe("MCP Server", () => {
     expect(firstContent.text).toContain("Input validation error");
 
     expect(firstContent.text).toContain("recipient_authorized");
+  });
+
+  it("executes an allowed invoice through ProofGate", async () => {
+    const result = await client.callTool({
+      name: "create_invoice",
+      arguments: {
+        amount: 20_000,
+        currency: "INR",
+        customerStatus: "active",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(body.verification.allowed).toBe(true);
+    expect(body.verification.violations).toEqual([]);
+
+    expect(body.executed).toBe(true);
+
+    expect(body.executionResult).toEqual({
+      success: true,
+      invoiceId: "external_invoice_1",
+      amount: 20_000,
+      currency: "INR",
+    });
+  });
+
+  it("blocks an invalid invoice through ProofGate", async () => {
+    const result = await client.callTool({
+      name: "create_invoice",
+      arguments: {
+        amount: 60_000,
+        currency: "INR",
+        customerStatus: "active",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(body.verification.allowed).toBe(false);
+    expect(body.executed).toBe(false);
+    expect(body.executionResult).toBeUndefined();
+
+    expect(body.verification.violations).toEqual([
+      {
+        rule: "invoice_amount_limit",
+        reason: "Invoices cannot exceed ₹50,000.",
+      },
+    ]);
+  });
+
+  it("blocks an invoice for an inactive customer through MCP", async () => {
+    const result = await client.callTool({
+      name: "create_invoice",
+      arguments: {
+        amount: 20_000,
+        currency: "INR",
+        customerStatus: "inactive",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(body.verification.allowed).toBe(false);
+    expect(body.executed).toBe(false);
+
+    expect(body.verification.violations).toEqual([
+      {
+        rule: "customer_must_be_active",
+        reason: "Invoices can only be created for active customers.",
+      },
+    ]);
+  });
+
+  it("blocks a non-INR invoice through MCP", async () => {
+    const result = await client.callTool({
+      name: "create_invoice",
+      arguments: {
+        amount: 20_000,
+        currency: "USD",
+        customerStatus: "active",
+      },
+    });
+
+    expect(result.isError).not.toBe(true);
+
+    const content = result.content;
+
+    expect(content).toHaveLength(1);
+
+    const firstContent = content[0];
+
+    expect(firstContent).toBeDefined();
+
+    if (firstContent?.type !== "text") {
+      throw new Error("Expected MCP response content to be text.");
+    }
+
+    const body = JSON.parse(firstContent.text);
+
+    expect(body.verification.allowed).toBe(false);
+    expect(body.executed).toBe(false);
+
+    expect(body.verification.violations).toEqual([
+      {
+        rule: "currency_must_be_inr",
+        reason: "Invoices must use INR.",
+      },
+    ]);
   });
 });
