@@ -32,6 +32,10 @@ export function storeExecution(
   idempotencyKey: string,
   execution: StoredExecution,
 ) {
+  if (shouldFailStore) {
+    throw new Error("Idempotency store unavailable.");
+  }
+
   executions.set(idempotencyKey, execution);
 }
 
@@ -51,13 +55,22 @@ export function claimInFlightExecution(
     promise,
   });
 
-  promise.finally(() => {
-    const current = inFlightExecutions.get(idempotencyKey);
+  void promise.then(
+    () => {
+      const current = inFlightExecutions.get(idempotencyKey);
 
-    if (current?.promise === promise) {
-      inFlightExecutions.delete(idempotencyKey);
-    }
-  });
+      if (current?.promise === promise) {
+        inFlightExecutions.delete(idempotencyKey);
+      }
+    },
+    () => {
+      const current = inFlightExecutions.get(idempotencyKey);
+
+      if (current?.promise === promise) {
+        inFlightExecutions.delete(idempotencyKey);
+      }
+    },
+  );
 
   return undefined;
 }
@@ -65,4 +78,11 @@ export function claimInFlightExecution(
 export function resetIdempotencyStore() {
   executions.clear();
   inFlightExecutions.clear();
+  shouldFailStore = false;
+}
+
+let shouldFailStore = false;
+
+export function setIdempotencyStoreFailure(value: boolean) {
+  shouldFailStore = value;
 }
