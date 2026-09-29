@@ -130,6 +130,7 @@ export async function verify(
 async function executeInternal(
   request: ProofGateRequest,
   traceId: string,
+  idempotencyKey?: string,
 ): Promise<ProofGateResult> {
   const tool = toolRegistry.getTool(String(request.action));
 
@@ -208,10 +209,11 @@ async function executeInternal(
    * Only now can the real tool/external service execute.
    */
   try {
-    const executionResult = await executeTool(
-      validatedRequest as ToolRequest,
-      trustedState,
-    );
+    const executionResult = idempotencyKey
+      ? await executeTool(validatedRequest as ToolRequest, trustedState, {
+          idempotencyKey,
+        })
+      : await executeTool(validatedRequest as ToolRequest, trustedState);
 
     const result: ProofGateResult = {
       traceId,
@@ -422,19 +424,21 @@ export async function execute(
    * synchronously before another caller can claim the same
    * idempotency key.
    */
-  const executionPromise = executeInternal(validatedRequest, traceId).then(
-    (result) => {
-      const storedExecution = {
-        requestHash,
+  const executionPromise = executeInternal(
+    validatedRequest,
+    traceId,
+    idempotencyKey,
+  ).then((result) => {
+    const storedExecution = {
+      requestHash,
 
-        result,
-      };
+      result,
+    };
 
-      storeExecution(idempotencyKey, storedExecution);
+    storeExecution(idempotencyKey, storedExecution);
 
-      return storedExecution;
-    },
-  );
+    return storedExecution;
+  });
 
   /*
    * ---------------------------------------------------------

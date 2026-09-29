@@ -1,0 +1,16 @@
+# Force LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly ensure binaries are not touched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary

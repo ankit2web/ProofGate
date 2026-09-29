@@ -54,6 +54,10 @@ describe("Idempotency ambiguous outcome", () => {
 
     expect(second.executed).toBe(true);
 
-    expect(getExternalInvoices()).toHaveLength(2);
+    expect(second.executionResult).toMatchObject({
+      invoiceId: "external_invoice_1",
+    });
+
+    expect(getExternalInvoices()).toHaveLength(1);
   });
 });

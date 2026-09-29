@@ -44,10 +44,11 @@ export const createInvoiceTool: ToolDefinition = {
     };
   },
 
-  async execute(request) {
+  async execute(request, _trustedState, context) {
     const invoice = await createExternalInvoice(
       request.amount as number,
       request.currency as string,
+      context?.idempotencyKey,
     );
 
     return {

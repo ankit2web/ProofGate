@@ -6,6 +6,10 @@ export type ToolRequest = {
   [key: string]: unknown;
 };
 
+export type ToolExecutionContext = {
+  idempotencyKey?: string;
+};
+
 export type ToolDefinition = {
   name: string;
   description: string;
@@ -23,5 +27,6 @@ export type ToolDefinition = {
   execute: (
     request: ToolRequest,
     trustedState: Record<string, unknown>,
+    context?: ToolExecutionContext,
   ) => Promise<unknown>;
 };

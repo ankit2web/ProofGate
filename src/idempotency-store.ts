@@ -11,8 +11,9 @@ type InFlightExecution = {
 };
 
 const executions = new Map<string, StoredExecution>();
-
 const inFlightExecutions = new Map<string, InFlightExecution>();
+
+let shouldFailStore = false;
 
 export function hashRequest(request: Record<string, unknown>): string {
   const canonicalRequest = JSON.stringify(request);
@@ -20,18 +21,22 @@ export function hashRequest(request: Record<string, unknown>): string {
   return createHash("sha256").update(canonicalRequest, "utf8").digest("hex");
 }
 
-export function getExecution(idempotencyKey: string) {
+export function getExecution(
+  idempotencyKey: string,
+): StoredExecution | undefined {
   return executions.get(idempotencyKey);
 }
 
-export function getInFlightExecution(idempotencyKey: string) {
+export function getInFlightExecution(
+  idempotencyKey: string,
+): InFlightExecution | undefined {
   return inFlightExecutions.get(idempotencyKey);
 }
 
 export function storeExecution(
   idempotencyKey: string,
   execution: StoredExecution,
-) {
+): void {
   if (shouldFailStore) {
     throw new Error("Idempotency store unavailable.");
   }
@@ -43,18 +48,23 @@ export function claimInFlightExecution(
   idempotencyKey: string,
   requestHash: string,
   promise: Promise<StoredExecution>,
-) {
+): InFlightExecution | undefined {
   const existing = inFlightExecutions.get(idempotencyKey);
 
+  // Someone else already owns this idempotency key.
   if (existing) {
     return existing;
   }
 
-  inFlightExecutions.set(idempotencyKey, {
+  // We become the owner.
+  const inFlight: InFlightExecution = {
     requestHash,
     promise,
-  });
+  };
 
+  inFlightExecutions.set(idempotencyKey, inFlight);
+
+  // Always clean up after completion.
   void promise.then(
     () => {
       const current = inFlightExecutions.get(idempotencyKey);
@@ -75,14 +85,12 @@ export function claimInFlightExecution(
   return undefined;
 }
 
-export function resetIdempotencyStore() {
+export function resetIdempotencyStore(): void {
   executions.clear();
   inFlightExecutions.clear();
   shouldFailStore = false;
 }
 
-let shouldFailStore = false;
-
-export function setIdempotencyStoreFailure(value: boolean) {
+export function setIdempotencyStoreFailure(value: boolean): void {
   shouldFailStore = value;
 }
